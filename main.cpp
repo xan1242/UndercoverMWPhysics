@@ -19,6 +19,7 @@ void WriteLog(const std::string& str) {
 }
 
 #define FUNCTION_LOG(name) WriteLog(std::format("{} called from {:X}", name, (uintptr_t)__builtin_return_address(0)));
+#define ICHASSIS_FUNCTION_LOG(name) {}
 
 #include "decomp/ConversionUtil.hpp"
 

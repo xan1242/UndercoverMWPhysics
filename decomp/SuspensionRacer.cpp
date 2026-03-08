@@ -404,6 +404,8 @@ float WheelDiameter(const Attrib::Gen::car_tuning &tires, bool front) {
 }
 
 void SuspensionRacer::CreateTires() {
+	FUNCTION_LOG("SuspensionRacer::CreateTires");
+
 	for (int i = 0; i < 4; ++i) {
 		delete mTires[i];
 		bool is_front = IsFront(i);
@@ -707,7 +709,6 @@ static const float Tweak_TuningAero_DownForce = 0.25f;
 static const float Tweak_PlaneDynamics = 0.0f;
 
 // Credits: Brawltendo
-// TODO stack frame is slightly off
 void SuspensionRacer::DoAerodynamics(const State &state, float drag_pct, float aero_pct, float aero_front_z, float aero_rear_z,
 							 const Physics::Tunings *tunings) {
 	IRigidBody *irb = this->GetOwner()->GetRigidBody();
@@ -1613,6 +1614,7 @@ void SuspensionRacer::DoWheelForces(State &state) {
 		}
 		UMath::ScaleAdd((UMath::Vector3)state.matrix.y, counter_yaw - yaw, total_torque, total_torque);
 		mRB->Resolve(&total_force, &total_torque);
+		WriteLog(std::format("Resolve {:.2f} {:.2f} {:.2f}", total_force.x, total_force.y, total_force.z));
 	}
 
 	if (maxDelta > 0.0f) {
@@ -1771,7 +1773,7 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 	if (state.driver_style == STYLE_DRAG) {
 		aero_pct = Tweak_DragAeroMult;
 	}
-	DoAerodynamics(state, drag_pct, aero_pct, GetWheel(0).GetLocalArm().z, GetWheel(2).GetLocalArm().z, tunings);
+	//DoAerodynamics(state, drag_pct, aero_pct, GetWheel(0).GetLocalArm().z, GetWheel(2).GetLocalArm().z, tunings);
 	DoDriveForces(state);
 	DoWheelForces(state);
 
@@ -1794,15 +1796,15 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 	WriteLog("OnTaskSimulate finished");
 }
 
-void MWWheel::UpdateSurface(const SimSurface* surface) {
+void MWWheel::UpdateSurface(const Attrib::Collection* surface) {
 	if (mSurfaceStick > 0.0) {
-		if (surface->mCollection == mSurface.mCollection) {
-			mSurfaceStick = surface->GetLayout()->STICK;
+		if (surface == mSurface.mCollection) {
+			mSurfaceStick = mSurface.GetLayout()->STICK;
 		}
 	}
 	else {
-		Attrib::Instance::Change(&mSurface, surface->mCollection);
-		mSurfaceStick = surface->GetLayout()->STICK;
+		Attrib::Instance::Change(&mSurface, surface);
+		mSurfaceStick = mSurface.GetLayout()->STICK;
 	}
 }
 
@@ -1836,8 +1838,8 @@ bool MWWheel::UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3
 	mWorldPos.SetTolerance(UMath::Min(tolerance, prev));
 
 	bool result = WWorldPos::Update(&mWorldPos, &mPosition, &mNormal, IsOnGround() && usecache, collider, true);
-	auto surf = SimSurface(mWorldPos.pSurface);
-	UpdateSurface(&surf);
+	WriteLog(std::format("result {} surface {}", result, (uintptr_t)mWorldPos.pSurface));
+	UpdateSurface(mWorldPos.pSurface);
 	return result;
 }
 

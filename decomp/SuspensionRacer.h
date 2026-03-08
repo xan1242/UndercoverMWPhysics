@@ -25,12 +25,14 @@ public:
 	UMath::Vector4 mIntegral;
 
 	MWWheel(unsigned int flags) {
+		FUNCTION_LOG("Wheel::Wheel");
+		memset(this,0,sizeof(*this));
 		mFlags = flags;
 		Reset();
 	}
 
 	void Reset() {
-		mSurface = SimSurface(nullptr);
+		FUNCTION_LOG("Wheel::Reset");
 		mSurfaceStick = 0.0;
 		mIntegral.x = 0.0;
 		mIntegral.y = 0.0;
@@ -52,7 +54,7 @@ public:
 		Attrib::Instance::Change(&mSurface, SimSurface::kNull.mCollection);
 	}
 
-	void UpdateSurface(const SimSurface* surface);
+	void UpdateSurface(const Attrib::Collection* surface);
 	bool InitPosition(ICollisionBody* cb, IRigidBody *rb, double maxcompression);
 	bool UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3 &body_lv,
 							   const UMath::Matrix4 &body_matrix, const UMath::Vector3 &cog,
@@ -114,8 +116,8 @@ public:
 		mCompression = UMath::Max(c, 0.0f);
 	}
 
-	const SimSurface &GetSurface() const {
-		return mSurface;
+	const SimSurface *GetSurface() const {
+		return &mSurface;
 	}
 
 	const UMath::Vector3 &GetVelocity() const {

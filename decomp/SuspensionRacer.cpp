@@ -446,9 +446,32 @@ void SuspensionRacer::OnBehaviorChange(const UCrc32 &mechanic) {
 	}
 }
 
+void* NewSuspensionRacerVTable[] = {
+		(void*)0x69F570, // generic OnService
+		(void*)&SuspensionRacer::dtor,
+		(void*)&SuspensionRacer::Reset,
+		(void*)&SuspensionRacer::GetPriority,
+		(void*)&SuspensionRacer::OnOwnerAttached,
+		(void*)&SuspensionRacer::OnOwnerDetached,
+		(void*)&SuspensionRacer::OnTaskSimulate,
+		(void*)&SuspensionRacer::OnBehaviorChange,
+		(void*)&SuspensionRacer::OnPause,
+		(void*)&SuspensionRacer::OnUnPause,
+		(void*)&SuspensionRacer::OnDebugDraw,
+		(void*)&SuspensionRacer::CalculateUndersteerFactor,
+		(void*)&SuspensionRacer::CalculateOversteerFactor,
+		(void*)&SuspensionRacer::GetDownCoefficient,
+		(void*)&SuspensionRacer::GetDynamicRideHeight,
+		(void*)&SuspensionRacer::GetDriftValue,
+		(void*)&SuspensionRacer::ApplyVehicleEntryForces,
+};
+
 void SuspensionRacer::Create(const BehaviorParams& bp) {
+	*(uintptr_t*)this = (uintptr_t)&NewSuspensionRacerVTable;
 	*(uintptr_t*)&tmpChassis = (uintptr_t)&NewChassisVTable;
+	WriteLog("vtables defined");
 	mOwner->Object.Add(&tmpChassis);
+	WriteLog("oldctorbase finished");
 
 	// ISuspension(bp.fowner), mAttributes(this, 0)
 	mJumpTime = 0.0f;
@@ -1770,6 +1793,14 @@ void MWWheel::UpdateSurface(const SimSurface* surface) {
 	}
 }
 
+bool MWWheel::InitPosition(ICollisionBody* cb, IRigidBody *rb, double maxcompression) {
+	auto mat = *rb->GetTransform();
+	mat.p = *rb->GetPosition();
+	UMath::Vector3 dim;
+	rb->GetDimension(&dim);
+	return UpdatePosition(*rb->GetAngularVelocity(), *rb->GetLinearVelocity(), mat, {0,0,0}, 0.0, maxcompression, false, cb->GetWCollider(), dim.y * 2.0);
+}
+
 bool MWWheel::UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3 &body_lv,
 						   const UMath::Matrix4 &body_matrix, const UMath::Vector3 &cog,
 						   float dT, float wheel_radius, bool usecache, const WCollider *collider, float vehicle_height) {
@@ -1803,6 +1834,63 @@ void SuspensionRacer::MatchSpeed(float speed) {
 	for (int i = 0; i < 4; ++i) {
 		mTires[i]->MatchSpeed(speed);
 	}
+	mBurnOut.Reset();
+	mDrift.Reset();
+}
+
+void SuspensionRacer::dtor(char a2) {
+	for (int i = 0; i < 4; ++i) {
+		delete mTires[i];
+	}
+	if ((a2 & 1) != 0) {
+		gFastMem.Free(this, sizeof(SuspensionRacer), nullptr);
+	}
+}
+
+float SuspensionRacer::CalculateUndersteerFactor() {
+	float magnitude = 0.0f;
+	float slip_avg = (GetIChassis()->GetWheelSkid(0) + GetIChassis()->GetWheelSkid(1)) / 2.0f;
+	float steer = (GetIChassis()->GetWheelSteer(0) + GetIChassis()->GetWheelSteer(1)) / 2.0f;
+	float speed = GetOwner()->GetRigidBody()->GetSpeed();
+	if ((GetVehicle()->GetSpeed() > 0.0f) && (speed > 1.0f) && (steer * slip_avg < 0.0f)) {
+		magnitude = UMath::Abs(slip_avg) / speed;
+	}
+	return UMath::Min(magnitude, 1.0f);
+}
+
+float SuspensionRacer::CalculateOversteerFactor() {
+	float speed = GetOwner()->GetRigidBody()->GetSpeed();
+	float magnitude = 0.0f;
+	if ((this->GetVehicle()->GetSpeed() > 0.0f) && (speed > 1.0f)) {
+		magnitude = UMath::Abs((GetIChassis()->GetWheelSkid(3) + GetIChassis()->GetWheelSkid(2)) * 0.5f) / speed;
+	}
+	return UMath::Min(magnitude, 1.0f);
+}
+
+void SuspensionRacer::Reset() {
+	ISimable *owner = GetOwner();
+	IRigidBody *rigidBody = owner->GetRigidBody();
+	UMath::Vector3 vUp = *rigidBody->GetUpVector();
+
+	unsigned int numonground = 0;
+	this->mGameBreaker = 0.0f;
+	for (int i = 0; i < 4; ++i) {
+		SuspensionRacer::Tire &wheel = GetWheel(i);
+		wheel.Reset();
+		if (wheel.InitPosition(mCollisionBody, rigidBody, wheel.GetRadius())) {
+			float upness = UMath::Clamp(UMath::Dot(UMath::Vector4To3(wheel.GetNormal()), vUp), 0.0f, 1.0f);
+			float newCompression = wheel.GetNormal().w + GetRideHeight(i) * upness;
+			if (newCompression < 0.0f) {
+				newCompression = 0.0f;
+			}
+			wheel.SetCompression(newCompression);
+			if (newCompression > 0.0f) {
+				numonground++;
+			}
+		}
+	}
+	this->mNumWheelsOnGround = numonground;
+	mSteering.Reset();
 	mBurnOut.Reset();
 	mDrift.Reset();
 }

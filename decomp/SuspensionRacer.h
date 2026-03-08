@@ -25,11 +25,35 @@ public:
 	UMath::Vector4 mIntegral;
 
 	MWWheel(unsigned int flags) {
-		mSurface = SimSurface(nullptr);
 		mFlags = flags;
+		Reset();
+	}
+
+	void Reset() {
+		mSurface = SimSurface(nullptr);
+		mSurfaceStick = 0.0;
+		mIntegral.x = 0.0;
+		mIntegral.y = 0.0;
+		mIntegral.z = 0.0;
+		mIntegral.w = 0.0;
+		mAirTime = 0.0;
+		mVelocity.x = 0.0;
+		mVelocity.y = 0.0;
+		mVelocity.z = 0.0;
+		mCompression = 0.0;
+		mNormal.x = 0.0;
+		mNormal.y = 0.0;
+		mNormal.z = 0.0;
+		mNormal.w = 0.0;
+		mForce.x = 0.0;
+		mForce.y = 0.0;
+		mForce.z = 0.0;
+		mWorldPos = WWorldPos();
+		Attrib::Instance::Change(&mSurface, SimSurface::kNull.mCollection);
 	}
 
 	void UpdateSurface(const SimSurface* surface);
+	bool InitPosition(ICollisionBody* cb, IRigidBody *rb, double maxcompression);
 	bool UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3 &body_lv,
 							   const UMath::Matrix4 &body_matrix, const UMath::Vector3 &cog,
 							   float dT, float wheel_radius, bool usecache, const WCollider *collider, float vehicle_height);
@@ -490,6 +514,27 @@ public:
 		return *mTires[i];
 	}
 
+	// hack around this enough so the compiler doesn't complain about the vtable being missing
+	IChassis* GetIChassis() {
+		auto addr = (uintptr_t)(this + offsetof(SuspensionRacer, tmpChassis));
+		return (IChassis*)addr;
+	}
+
+	void OnOwnerAttached(IAttachable* pOther) {}
+	void OnOwnerDetached(IAttachable* pOther) {}
+	void OnPause() {}
+	void OnUnPause() {}
+	void OnDebugDraw() {}
+	int GetPriority() { return mPriority; }
+	float GetDownCoefficient() { return GetIChassis()->GetDownCoefficient(); }
+	float GetDynamicRideHeight() { return 1.0; } // todo
+	float GetDriftValue() { return 0.0; } // todo
+	void ApplyVehicleEntryForces(bool enteringVehicle, const UMath::Vector3 *pos, bool calledfromEvent) {}
+
+	void dtor(char a2);
+	void Reset();
+	float CalculateUndersteerFactor();
+	float CalculateOversteerFactor();
 	void MatchSpeed(float speed);
 	Meters GetRideHeight(unsigned int idx) const;
 	void DoDrifting(const State &state);

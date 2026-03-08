@@ -10,6 +10,14 @@
 
 #include "include/chloemenulib.h"
 
+void WriteLog(const std::string& str) {
+	static auto file = std::ofstream("NFSUCMWPhysics_gcp.log");
+
+	file << str;
+	file << "\n";
+	file.flush();
+}
+
 #include "decomp/ConversionUtil.hpp"
 
 auto cartuning_LookupKey = (uint32_t(__thiscall*)(Attrib::Gen::car_tuning*, const ISimable*, int))0x721E20;
@@ -212,14 +220,6 @@ std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 #include "decomp/MWChassis.cpp"
 #include "decomp/SuspensionRacer.cpp"
 
-void WriteLog(const std::string& str) {
-	static auto file = std::ofstream("NFSUCMWPhysics_gcp.log");
-
-	file << str;
-	file << "\n";
-	file.flush();
-}
-
 void DebugMenu() {
 	ChloeMenuLib::BeginMenu();
 
@@ -232,8 +232,12 @@ auto oldctor = (void*(__thiscall*)(void*, BehaviorParams*, SuspensionParams*))0x
 auto oldctorbase = (void*(__thiscall*)(void*, BehaviorParams*, int))0x6DB670;
 SuspensionRacer* ChassisHumanConstructHooked(BehaviorParams* bp) {
 	auto data = (SuspensionRacer*)gFastMem.Alloc(sizeof(SuspensionRacer), nullptr);
+	memset(data,0,sizeof(SuspensionRacer));
+	WriteLog(std::format("data {:X}", (uintptr_t)data));
 	oldctorbase(data, bp, 0);
+	WriteLog("oldctorbase finished");
 	data->Create(*bp);
+	WriteLog("Create finished");
 	return data;
 }
 
@@ -248,9 +252,6 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID) {
 			ChloeMenuLib::RegisterMenu("Debug Menu", &DebugMenu);
 
 			NyaHookLib::PatchRelative(NyaHookLib::JMP, 0x73F830, ChassisHumanConstructHooked);
-
-			NyaHookLib::Patch(0xC1E6EC, &SuspensionRacer::OnTaskSimulate);
-			NyaHookLib::Patch(0xC1E6F0, &SuspensionRacer::OnBehaviorChange);
 
 			WriteLog("Mod initialized");
 		} break;

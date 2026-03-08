@@ -99,7 +99,7 @@ namespace MWChassis {
 	float __thiscall GetWheelSlipRatio(uintptr_t ptr, unsigned int index) { // todo this is different
 		ICHASSIS_FUNCTION_LOG("GetWheelSlipRatio");
 		auto pThis = GetSuspensionRacer(ptr);
-		return 1.0;
+		return 0.0;
 		//return pThis->mTires[index]->GetSlipAngle();
 	}
 	float __thiscall GetDragBoost(uintptr_t ptr) {

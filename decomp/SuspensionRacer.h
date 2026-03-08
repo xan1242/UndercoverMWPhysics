@@ -253,10 +253,6 @@ public:
 		void UpdateFree(float dT);
 		float UpdateLoaded(float lat_vel, float fwd_vel, float body_speed, float load, float dT);
 
-		bool IsOnGround() const {
-			return mCompression > 0.0f;
-		}
-
 		bool IsSlipping() const {
 			return mTraction >= 1.0f;
 		}

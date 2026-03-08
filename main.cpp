@@ -69,6 +69,7 @@ namespace UMath {
 	float Sina(float a) { return std::sin(a * (std::numbers::pi*2)); }
 	float Sqrt(float a) { return std::sqrt(a); }
 	float Pow(float a, float b) { return std::pow(a, b); }
+	float Pow(int a, int b) { return std::pow(a, b); }
 	float Atan2a(float a, float b) { return std::atan2(a, b); }
 
 	inline void Cross(const Vector3 &a, const Vector3 &b, Vector3 &r) {
@@ -99,23 +100,30 @@ namespace UMath {
 	}
 
 	inline void Unit(const Vector3 &a, Vector3 &r) {
-		auto v2 = 0.0;
-		auto v3 = std::sqrt(((a.z * a.z) + ((a.x * a.x) + (a.y * a.y))));
-		if (v3 != 0.0) v2 = (1.0 / v3);
-		r.x = a.x * v2;
-		r.y = a.y * v2;
-		r.z = a.z * v2;
+		auto len = a.length();
+		if (len != 0.0) {
+			r.x = a.x / len;
+			r.y = a.y / len;
+			r.z = a.z / len;
+		}
+		else {
+			r = {0,0,0};
+		}
 	}
 
 	// todo is this correct
 	void UnitCross(const Vector3 &a, const Vector3 &b, Vector3 &r) {
-		r.x = (b.z * a.y) - (b.y * a.z);
-		r.y = (b.x * a.z) - (a.x * b.z);
-		r.z = (a.x * b.y) - (b.x * a.y);
+		r.x = a.y * b.z - a.z * b.y;
+		r.y = a.z * b.x - a.x * b.z;
+		r.z = a.x * b.y - a.y * b.x;
 		Unit(r, r);
 	}
 
 	int Clamp(const int a, const int amin, const int amax) {
+		return a < amin ? amin : (a > amax ? amax : a);
+	}
+
+	float Clamp(const float a, const float amin, const float amax) {
 		return a < amin ? amin : (a > amax ? amax : a);
 	}
 
@@ -223,10 +231,22 @@ std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 #include "decomp/MWChassis.cpp"
 #include "decomp/SuspensionRacer.cpp"
 
+SuspensionRacer* pSuspension = nullptr;
 void DebugMenu() {
 	ChloeMenuLib::BeginMenu();
 
-	DrawMenuOption("woof");
+	if (pSuspension) {
+		DrawMenuOption(std::format("Wheels - {:.2f} {:.2f}", pSuspension->mSteering.Wheels[0], pSuspension->mSteering.Wheels[1]));
+
+		auto tire = pSuspension->mTires[0];
+		DrawMenuOption(std::format("fHeight[0] - {:.2f}", tire->mWorldPos.fHeight));
+		DrawMenuOption(std::format("fNormal - {:.2f} {:.2f} {:.2f} {:.2f}", tire->mNormal.x, tire->mNormal.y, tire->mNormal.z, tire->mNormal.w));
+		DrawMenuOption(std::format("mCompression - {:.2f}", tire->mCompression));
+		DrawMenuOption(std::format("mLateralSpeed - {:.2f}", tire->mLateralSpeed));
+	}
+	else {
+		DrawMenuOption("woof?");
+	}
 
 	ChloeMenuLib::EndMenu();
 }
@@ -234,19 +254,10 @@ void DebugMenu() {
 auto oldctor = (void*(__thiscall*)(void*, BehaviorParams*, SuspensionParams*))0x73CEA0;
 auto oldctorbase = (void*(__thiscall*)(void*, BehaviorParams*, int))0x6DB670;
 SuspensionRacer* __thiscall ChassisHumanConstructHooked(BehaviorParams* bp) {
-	WriteLog(std::format("bp {:X}", (uintptr_t)bp));
-	WriteLog(std::format("fowner {:X}", (uintptr_t)&bp->fowner));
-	WriteLog(std::format("fMechanic {:X}", (uintptr_t)&bp->fMechanic));
-	WriteLog(std::format("fSig {:X}", (uintptr_t)&bp->fSig));
-	WriteLog(std::format("*fMechanic {:X}", (uintptr_t)bp->fMechanic->mCRC));
-	WriteLog(std::format("*fSig {:X}", (uintptr_t)bp->fSig->mCRC));
-	auto data = (SuspensionRacer*)gFastMem.Alloc(sizeof(SuspensionRacer), nullptr);
+	auto data = pSuspension = (SuspensionRacer*)gFastMem.Alloc(sizeof(SuspensionRacer), nullptr);
 	memset(data,0,sizeof(SuspensionRacer));
-	WriteLog(std::format("data {:X}", (uintptr_t)data));
 	oldctorbase(data, bp, 0);
-	WriteLog("oldctorbase finished");
 	data->Create(*bp);
-	WriteLog("Create finished");
 	return data;
 }
 

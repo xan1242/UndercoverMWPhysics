@@ -684,7 +684,7 @@ void SuspensionRacer::SetCOG(float extra_bias, float extra_ride) {
 }
 
 void SuspensionRacer::DoTireHeat(const State &state) {
-	if (state.flags & 1) {
+	if (state.flags & State::IS_STAGING) {
 		for (unsigned int i = 0; i < 4; ++i) {
 			if (mTires[i]->GetCurrentSlip() > 0.5f) {
 				this->mTireHeat += state.time / 3.0f;
@@ -1202,7 +1202,7 @@ static const bool DoDriftPhysics = true;
 
 // Credits: Brawltendo
 void SuspensionRacer::DoDrifting(const State &state) {
-	if (mDrift.State && ((state.flags & 1) || state.driver_style == STYLE_DRAG)) {
+	if (mDrift.State && ((state.flags & State::IS_STAGING) || state.driver_style == STYLE_DRAG)) {
 		mDrift.Reset();
 		return;
 	}
@@ -1419,7 +1419,7 @@ void SuspensionRacer::TuneWheelParams(State &state) {
 	}
 
 	// lower traction for all wheels when staging
-	if (state.flags & 1) {
+	if (state.flags & State::IS_STAGING) {
 		for (int i = 0; i < 4; ++i) {
 			mTires[i]->ScaleTractionBoost(0.25f);
 		}
@@ -1512,6 +1512,9 @@ void SuspensionRacer::DoWheelForces(State &state) {
 		}
 		newCompression = UMath::Max(newCompression, 0.0f);
 
+		WriteLog(std::format("penetration {:.2f}", penetration));
+		WriteLog(std::format("rideheight_specs[axle] {:.2f}", rideheight_specs[axle]));
+
 		// handle the suspension bottoming out
 		if (newCompression > max_compression) {
 			float delta = newCompression - max_compression;
@@ -1520,6 +1523,11 @@ void SuspensionRacer::DoWheelForces(State &state) {
 			newCompression = max_compression;
 			wheel.SetBottomOutTime(time);
 		}
+
+		WriteLog(std::format("newCompression {:.2f}", newCompression));
+		WriteLog(std::format("upness {:.2f}", upness));
+		WriteLog(std::format("groundNormal {:.2f} {:.2f} {:.2f}", groundNormal.x, groundNormal.y, groundNormal.z));
+		WriteLog(std::format("vUp {:.2f} {:.2f} {:.2f}", vUp.x, vUp.y, vUp.z));
 
 		if (newCompression > 0.0f && upness > VehicleSystem::ENABLE_ROLL_STOPS_THRESHOLD) {
 			++wheelsOnGround;
@@ -1571,6 +1579,7 @@ void SuspensionRacer::DoWheelForces(State &state) {
 
 			wheel.SetForce(force);
 			resolve = true;
+			WriteLog(std::format("force {:.2f} {:.2f} {:.2f}", force.x, force.y, force.z));
 		} else {
 			wheel.SetForce({0,0,0});
 			wheel.UpdateFree(dT);
@@ -1717,7 +1726,7 @@ static const float TweakGameBreakerRampOutPhysicsTime = 1.0f / 3.0f;
 static const float Tweak_DragAeroMult = 1.5f;
 
 void SuspensionRacer::OnTaskSimulate(float dT) {
-	FUNCTION_LOG("SuspensionRacer::OnTaskSimulate");
+	//FUNCTION_LOG("SuspensionRacer::OnTaskSimulate");
 
 	if (!mCollisionBody || !mRB) {
 		WriteLog("OnTaskSimulate early exit");
@@ -1757,7 +1766,7 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 	float grip_scale = ComputeLateralGripScale(state);
 	float traction_scale = ComputeTractionScale(state);
 	float steerdrag_reduction = UMath::Lerp(Tweak_SteerDragReduction, 1.0f, mGameBreaker);
-	if ((state.flags & 1) == 0) {
+	if ((state.flags & State::IS_STAGING) == 0) {
 		float launch = GetVehicle()->GetPerfectLaunch();
 		if (launch > 0.0f) {
 			traction_scale += launch * 0.25f;
@@ -1789,7 +1798,7 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 	}
 
 	DoTireHeat(state);
-	DoJumpStabilizer(state);
+	//DoJumpStabilizer(state);
 	//DoSleep(state); // todo?
 	//Chassis::OnTaskSimulate(dT);
 
@@ -1809,7 +1818,7 @@ void MWWheel::UpdateSurface(const Attrib::Collection* surface) {
 }
 
 bool MWWheel::InitPosition(ICollisionBody* cb, IRigidBody *rb, double maxcompression) {
-	FUNCTION_LOG("Wheel::InitPosition");
+	//FUNCTION_LOG("Wheel::InitPosition");
 	auto mat = *rb->GetTransform();
 	mat.p = *rb->GetPosition();
 	UMath::Vector3 dim;
@@ -1820,7 +1829,7 @@ bool MWWheel::InitPosition(ICollisionBody* cb, IRigidBody *rb, double maxcompres
 bool MWWheel::UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3 &body_lv,
 						   const UMath::Matrix4 &body_matrix, const UMath::Vector3 &cog,
 						   float dT, float wheel_radius, bool usecache, const WCollider *collider, float vehicle_height) {
-	FUNCTION_LOG("Wheel::UpdatePosition");
+	//FUNCTION_LOG("Wheel::UpdatePosition");
 	UMath::Rotate(mLocalArm, body_matrix, mWorldArm);
 	UMath::Add(mWorldArm, (UMath::Vector3)body_matrix.p, mPosition);
 
@@ -1838,7 +1847,15 @@ bool MWWheel::UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3
 	mWorldPos.SetTolerance(UMath::Min(tolerance, prev));
 
 	bool result = WWorldPos::Update(&mWorldPos, &mPosition, &mNormal, IsOnGround() && usecache, collider, true);
-	WriteLog(std::format("result {} surface {}", result, (uintptr_t)mWorldPos.pSurface));
+	// this is supposed to almost always be negative
+	//mNormal.w = mWorldPos.fHeight;
+	if (result) {
+		//mNormal.w = mWorldPos.fHeight;
+		mNormal.w = ((mWorldPos.fPt0.x - mPosition.x) * mNormal.x) + (((mWorldPos.fPt0.z - mPosition.z) * mNormal.z) + ((mWorldPos.fPt0.y - mPosition.y) * mNormal.y));
+		//mNormal.w += mWorldPos.fYOffset;
+	}
+
+	WriteLog(std::format("result {} surface {:X}", result, (uintptr_t)mWorldPos.pSurface));
 	UpdateSurface(mWorldPos.pSurface);
 	return result;
 }

@@ -209,6 +209,7 @@ std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 
 #include "decomp/AverageWindow.h"
 #include "decomp/SuspensionRacer.h"
+#include "decomp/MWChassis.cpp"
 #include "decomp/SuspensionRacer.cpp"
 
 void WriteLog(const std::string& str) {
@@ -230,8 +231,7 @@ void DebugMenu() {
 auto oldctor = (void*(__thiscall*)(void*, BehaviorParams*, SuspensionParams*))0x73CEA0;
 auto oldctorbase = (void*(__thiscall*)(void*, BehaviorParams*, int))0x6DB670;
 SuspensionRacer* ChassisHumanConstructHooked(BehaviorParams* bp) {
-	auto data = (SuspensionRacer*)gFastMem.Alloc(std::max((int)sizeof(SuspensionRacer), 0x10F4), nullptr);
-	auto sus = SuspensionParams();
+	auto data = (SuspensionRacer*)gFastMem.Alloc(sizeof(SuspensionRacer), nullptr);
 	oldctorbase(data, bp, 0);
 	data->Create(*bp);
 	return data;

@@ -1,11 +1,3 @@
-float UNDERCOVER_BrakesAtValue = 0.0;
-float UNDERCOVER_StaticGripAtValue = 0.0;
-float UNDERCOVER_RollCenterAtValue = 0.0;
-float UNDERCOVER_AeroCGAtValue = 0.0;
-float UNDERCOVER_AeroCoeffAtValue = 0.0;
-float UNDERCOVER_SuspensionAtValue = 0.0;
-float UNDERCOVER_SteeringAtValue = 0.0;
-
 namespace Physics {
 	namespace Info {
 		float AerodynamicDownforce(const Attrib::Gen::car_tuning &chassis, const float speed) {
@@ -455,8 +447,10 @@ void SuspensionRacer::OnBehaviorChange(const UCrc32 &mechanic) {
 }
 
 void SuspensionRacer::Create(const BehaviorParams& bp) {
-	// ISuspension(bp.fowner), mAttributes(this, 0)
+	*(uintptr_t*)&tmpChassis = (uintptr_t)&NewChassisVTable;
+	mOwner->Object.Add(&tmpChassis);
 
+	// ISuspension(bp.fowner), mAttributes(this, 0)
 	mJumpTime = 0.0f;
 	mJumpAlititude = 0.0f;
 	mTireHeat = 0.0f;
@@ -588,17 +582,6 @@ void SuspensionRacer::DoJumpStabilizer(const State &state) {
 		irb->Resolve(&damping_force, &damping_torque);
 	}
 }
-
-/*float SuspensionRacer::CalculateUndersteerFactor() const {
-	float magnitude = 0.0f;
-	float slip_avg = (GetWheelSkid(0) + GetWheelSkid(1)) / 2.0f;
-	float steer = (GetWheelSteer(0) + GetWheelSteer(1)) / 2.0f;
-	float speed = GetOwner()->GetRigidBody()->GetSpeed();
-	if ((GetVehicle()->GetSpeed() > 0.0f) && (speed > 1.0f) && (steer * slip_avg < 0.0f)) {
-		magnitude = UMath::Abs(slip_avg) / speed;
-	}
-	return UMath::Min(magnitude, 1.0f);
-}*/
 
 Mps SuspensionRacer::ComputeMaxSlip(const State &state) const {
 	float ramp = UMath::Ramp(state.speed, 10.0f, 71.0f);
@@ -1810,4 +1793,16 @@ bool MWWheel::UpdatePosition(const UMath::Vector3 &body_av, const UMath::Vector3
 	auto surf = SimSurface(mWorldPos.pSurface);
 	UpdateSurface(&surf);
 	return result;
+}
+
+Meters SuspensionRacer::GetRideHeight(unsigned int idx) const {
+	return INCH2METERS(mCarInfo.GetLayout()->RIDE_HEIGHT.At(idx / 2));
+}
+
+void SuspensionRacer::MatchSpeed(float speed) {
+	for (int i = 0; i < 4; ++i) {
+		mTires[i]->MatchSpeed(speed);
+	}
+	mBurnOut.Reset();
+	mDrift.Reset();
 }

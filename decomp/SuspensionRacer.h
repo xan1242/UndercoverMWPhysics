@@ -1,3 +1,11 @@
+float UNDERCOVER_BrakesAtValue = 0.0;
+float UNDERCOVER_StaticGripAtValue = 0.0;
+float UNDERCOVER_RollCenterAtValue = 0.0;
+float UNDERCOVER_AeroCGAtValue = 0.0;
+float UNDERCOVER_AeroCoeffAtValue = 0.0;
+float UNDERCOVER_SuspensionAtValue = 0.0;
+float UNDERCOVER_SteeringAtValue = 0.0;
+
 class MWWheel {
 public:
 	WWorldPos mWorldPos;
@@ -344,7 +352,6 @@ public:
 			mLateralSpeed = 0.0f;
 		}
 
-	private:
 		// total size: 0x140
 		const float mRadius;                // offset 0xC4, size 0x4
 		float mBrake;                       // offset 0xC8, size 0x4
@@ -399,6 +406,7 @@ public:
 	Burnout mBurnOut;
 	Steering mSteering;
 	Tire *mTires[4];
+	IChassis tmpChassis;
 
 	struct State {
 		UMath::Matrix4 matrix;
@@ -482,6 +490,8 @@ public:
 		return *mTires[i];
 	}
 
+	void MatchSpeed(float speed);
+	Meters GetRideHeight(unsigned int idx) const;
 	void DoDrifting(const State &state);
 	float CalcYawControlLimit(float speed) const;
 	void TuneWheelParams(State &state);
@@ -495,7 +505,6 @@ public:
 	void DoWheelForces(State &state);
 	void ComputeState(float dT, State &state);
 	void SetCOG(float extra_bias, float extra_ride);
-	float CalculateUndersteerFactor() const;
 	Mps ComputeMaxSlip(const State &state) const;
 	float ComputeLateralGripScale(const State &state) const;
 	float ComputeTractionScale(const State &state) const;

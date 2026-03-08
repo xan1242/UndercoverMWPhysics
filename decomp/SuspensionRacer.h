@@ -520,16 +520,16 @@ public:
 		return (IChassis*)addr;
 	}
 
-	void OnOwnerAttached(IAttachable* pOther) {}
-	void OnOwnerDetached(IAttachable* pOther) {}
-	void OnPause() {}
-	void OnUnPause() {}
-	void OnDebugDraw() {}
-	int GetPriority() { return mPriority; }
-	float GetDownCoefficient() { return GetIChassis()->GetDownCoefficient(); }
-	float GetDynamicRideHeight() { return 1.0; } // todo
-	float GetDriftValue() { return 0.0; } // todo
-	void ApplyVehicleEntryForces(bool enteringVehicle, const UMath::Vector3 *pos, bool calledfromEvent) {}
+	void OnOwnerAttached(IAttachable* pOther) { FUNCTION_LOG("OnOwnerAttached"); }
+	void OnOwnerDetached(IAttachable* pOther) { FUNCTION_LOG("OnOwnerDetached"); }
+	void OnPause() { FUNCTION_LOG("OnPause");  }
+	void OnUnPause() { FUNCTION_LOG("OnUnPause");  }
+	void OnDebugDraw() { FUNCTION_LOG("OnDebugDraw");  }
+	int GetPriority() { FUNCTION_LOG("GetPriority"); return mPriority; }
+	float GetDownCoefficient(float f) { FUNCTION_LOG("GetDownCoefficient"); return GetIChassis()->GetDownCoefficient(); }
+	float GetDynamicRideHeight(unsigned int idx, State*) { FUNCTION_LOG("GetDynamicRideHeight"); return GetRideHeight(idx); }
+	float GetDriftValue() { FUNCTION_LOG("GetDriftValue"); return 0.0; } // todo
+	void ApplyVehicleEntryForces(bool enteringVehicle, const UMath::Vector3 *pos, bool calledfromEvent) { FUNCTION_LOG("ApplyVehicleEntryForces");  }
 
 	void dtor(char a2);
 	void Reset();

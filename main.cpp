@@ -18,6 +18,8 @@ void WriteLog(const std::string& str) {
 	file.flush();
 }
 
+#define FUNCTION_LOG(name) WriteLog(std::format("{} called from {:X}", name, (uintptr_t)__builtin_return_address(0)));
+
 #include "decomp/ConversionUtil.hpp"
 
 auto cartuning_LookupKey = (uint32_t(__thiscall*)(Attrib::Gen::car_tuning*, const ISimable*, int))0x721E20;
@@ -230,7 +232,13 @@ void DebugMenu() {
 
 auto oldctor = (void*(__thiscall*)(void*, BehaviorParams*, SuspensionParams*))0x73CEA0;
 auto oldctorbase = (void*(__thiscall*)(void*, BehaviorParams*, int))0x6DB670;
-SuspensionRacer* ChassisHumanConstructHooked(BehaviorParams* bp) {
+SuspensionRacer* __thiscall ChassisHumanConstructHooked(BehaviorParams* bp) {
+	WriteLog(std::format("bp {:X}", (uintptr_t)bp));
+	WriteLog(std::format("fowner {:X}", (uintptr_t)&bp->fowner));
+	WriteLog(std::format("fMechanic {:X}", (uintptr_t)&bp->fMechanic));
+	WriteLog(std::format("fSig {:X}", (uintptr_t)&bp->fSig));
+	WriteLog(std::format("*fMechanic {:X}", (uintptr_t)bp->fMechanic->mCRC));
+	WriteLog(std::format("*fSig {:X}", (uintptr_t)bp->fSig->mCRC));
 	auto data = (SuspensionRacer*)gFastMem.Alloc(sizeof(SuspensionRacer), nullptr);
 	memset(data,0,sizeof(SuspensionRacer));
 	WriteLog(std::format("data {:X}", (uintptr_t)data));
@@ -240,6 +248,34 @@ SuspensionRacer* ChassisHumanConstructHooked(BehaviorParams* bp) {
 	WriteLog("Create finished");
 	return data;
 }
+
+
+void __attribute__((naked)) ChassisHumanConstructASM() {
+	__asm__ (
+		//"push EAX\n\t"
+		"push ECX\n\t"
+		"mov ecx, [esp+8]\n\t"
+		"push EDX\n\t"
+		"push EBX\n\t"
+		"push EBP\n\t"
+		"push ESI\n\t"
+		"push EDI\n\t"
+		"call %0\n\t"
+		"pop EDI\n\t"
+		"pop ESI\n\t"
+		"pop EBP\n\t"
+		"pop EBX\n\t"
+		"pop EDX\n\t"
+		"pop ECX\n\t"
+		//"pop EAX\n\t"
+		"ret\n\t"
+			:
+			:  "i" (ChassisHumanConstructHooked)
+	);
+}
+
+// first crash:
+// GetPriority called from 6E6E54
 
 BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID) {
 	switch( fdwReason ) {
@@ -251,7 +287,8 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID) {
 
 			ChloeMenuLib::RegisterMenu("Debug Menu", &DebugMenu);
 
-			NyaHookLib::PatchRelative(NyaHookLib::JMP, 0x73F830, ChassisHumanConstructHooked);
+			//NyaHookLib::PatchRelative(NyaHookLib::CALL, 0x73F88D, 0x6DB670);
+			NyaHookLib::PatchRelative(NyaHookLib::JMP, 0x73F830, &ChassisHumanConstructASM);
 
 			WriteLog("Mod initialized");
 		} break;

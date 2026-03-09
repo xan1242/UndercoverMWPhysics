@@ -186,6 +186,14 @@ namespace UMath {
 	}
 
 	inline float Ramp(const float a, const float amin, const float amax) {
+		//auto v2 = 1.0;
+		//if ( ((a - amin) / (amax - amin)) < 1.0 )
+		//	v2 = ((a - amin) / (amax - amin));
+		//auto v3 = v2;
+		//if ( v2 < 0.0 )
+		//	v3 = 0.0;
+		//return v3;
+
 		float arange = amax - amin;
 		return arange > FLOAT_EPSILON ? std::max(0.0f, std::min((a - amin) / arange, 1.0f)) : 0.0f;
 	}
@@ -228,7 +236,9 @@ float Table::GetValue(float input) {
 
 std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 
-float fHackForceMultiplier = 1.0;
+float fHackDriveGripMultiplier = 1.0;
+float fHackLateralGripMultiplier = 1.0;
+float fHackRollingResistanceMultiplier = 1.0;
 float fHackTorqueMultiplier = 1.0;
 
 #include "decomp/AverageWindow.h"
@@ -256,17 +266,39 @@ void QuickValueEditor(const char* name, float& value) {
 	if (DrawMenuOption(std::format("{} - {}", name, value))) { ValueEditorMenu(value); }
 }
 
+// whatever highway is in uc:
+// LATERAL_GRIP 1
+// DRIVE_GRIP 0.1
+// ROLLING_RESISTANCE 0.13
+
+// asphalt_no_leaves uc:
+// LATERAL_GRIP 1
+// DRIVE_GRIP 1
+// ROLLING_RESISTANCE 0
+
+// asphalt_no_leaves mw:
+// LATERAL_GRIP 1
+// DRIVE_GRIP 1
+// ROLLING_RESISTANCE 1
+
 SuspensionRacer* pSuspension = nullptr;
 void DebugMenu() {
 	ChloeMenuLib::BeginMenu();
 
 	if (pSuspension) {
-		QuickValueEditor("fHackForceMultiplier", fHackForceMultiplier);
+		QuickValueEditor("fHackDriveGripMultiplier", fHackDriveGripMultiplier);
+		QuickValueEditor("fHackLateralGripMultiplier", fHackLateralGripMultiplier);
+		QuickValueEditor("fHackRollingResistanceMultiplier", fHackRollingResistanceMultiplier);
 		QuickValueEditor("fHackTorqueMultiplier", fHackTorqueMultiplier);
+		DrawMenuOption(std::format("state.flags - {}", LastChassisState.flags));
 		DrawMenuOption(std::format("state.time - {}", LastChassisState.time));
+		DrawMenuOption(std::format("state.mass - {}", LastChassisState.mass));
 		DrawMenuOption(std::format("state.local_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.local_vel.x, LastChassisState.local_vel.y, LastChassisState.local_vel.z));
 		DrawMenuOption(std::format("state.linear_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.linear_vel.x, LastChassisState.linear_vel.y, LastChassisState.linear_vel.z));
 		DrawMenuOption(std::format("state.speed - {:.2f}", LastChassisState.speed));
+		DrawMenuOption(std::format("MaxSlip - {:.2f}", pSuspension->ComputeMaxSlip(LastChassisState)));
+		DrawMenuOption(std::format("LateralGripScale - {:.2f}", pSuspension->ComputeLateralGripScale(LastChassisState)));
+		DrawMenuOption(std::format("TractionScale - {:.2f}", pSuspension->ComputeTractionScale(LastChassisState)));
 		DrawMenuOption(std::format("Wheels - {:.2f} {:.2f}", pSuspension->mSteering.Wheels[0], pSuspension->mSteering.Wheels[1]));
 
 		for (int i = 0; i < 4; i++) {
@@ -277,6 +309,9 @@ void DebugMenu() {
 			DrawMenuOption(std::format("mCompression - {:.2f}", tire->mCompression));
 			DrawMenuOption(std::format("mLateralSpeed - {:.2f}", tire->mLateralSpeed));
 			DrawMenuOption(std::format("mForce - {:.2f} {:.2f} {:.2f}", tire->mForce.x, tire->mForce.y, tire->mForce.z));
+			DrawMenuOption(std::format("DRIVE_GRIP - {:.2f}", tire->mSurface.GetLayout()->DRIVE_GRIP));
+			DrawMenuOption(std::format("LATERAL_GRIP - {:.2f}", tire->mSurface.GetLayout()->LATERAL_GRIP));
+			DrawMenuOption(std::format("ROLLING_RESISTANCE - {:.2f}", tire->mSurface.GetLayout()->ROLLING_RESISTANCE));
 		}
 	}
 	else {

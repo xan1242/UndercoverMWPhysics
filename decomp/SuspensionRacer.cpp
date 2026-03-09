@@ -67,7 +67,10 @@ struct MWCarTuning {
 };
 
 // data from mw elise
-MWCarTuning* GetMWCarData() {
+Attrib::Gen::car_tuning::_LayoutStruct* gCurrentCarInfo = nullptr;
+auto GetMWCarData() {
+	//return gCurrentCarInfo;
+
 	static MWCarTuning tmp;
 	// chassis
 	tmp.AERO_CG = 50.0;
@@ -394,7 +397,7 @@ float SuspensionRacer::Tire::UpdateLoaded(float lat_vel, float fwd_vel, float bo
 	float fwd_acc = (fwd_vel - mRoadSpeed) / dT;
 
 	mRoadSpeed = fwd_vel;
-	mLoad = UMath::Max(load, 0.0f) * fHackLoadMultiplier;
+	mLoad = UMath::Max(load, 0.0f);
 	mLateralSpeed = lat_vel;
 
 	float bt = mBrake * brake_spec;
@@ -423,7 +426,6 @@ float SuspensionRacer::Tire::UpdateLoaded(float lat_vel, float fwd_vel, float bo
 	if (skid_speed > FLOAT_EPSILON && (lat_vel != 0.0f || fwd_vel != 0.0f)) {
 		dynamicfriction = dynamicgrip_spec * mTractionBoost;
 		dynamicfriction *= pilot_factor;
-		dynamicfriction *= fHackDynamicFrictionMultiplier;
 		groundfriction = mLoad * dynamicfriction / skid_speed;
 		float slipgroundfriction = mLoad * dynamicfriction / UMath::Sqrt(fwd_vel * fwd_vel + lat_vel * lat_vel);
 		CheckForBrakeLock(abs_fwd * slipgroundfriction);
@@ -490,9 +492,9 @@ float SuspensionRacer::Tire::UpdateLoaded(float lat_vel, float fwd_vel, float bo
 	//auto fDriveGrip = mSurface.GetLayout()->DRIVE_GRIP;
 	//auto fLateralGrip = mSurface.GetLayout()->LATERAL_GRIP;
 	//auto fRollingResistance = mSurface.GetLayout()->ROLLING_RESISTANCE;
-	auto fDriveGrip = 1.0f * fHackDriveGripMultiplier;
-	auto fLateralGrip = 1.0f * fHackLateralGripMultiplier;
-	auto fRollingResistance = 1.0f * fHackRollingResistanceMultiplier;
+	auto fDriveGrip = 1.0f;
+	auto fLateralGrip = 1.0f;
+	auto fRollingResistance = 1.0f;
 
 	// factor surface friction into the tire force
 	mLateralForce *= fLateralGrip;
@@ -566,9 +568,9 @@ void SuspensionRacer::OnBehaviorChange(const UCrc32 &mechanic) {
 		GetOwner()->QueryInterface(&mEngineDamage);
 		WriteLog("BEHAVIOR_MECHANIC_ENGINE");
 	} else if (mechanic.mCRC == BEHAVIOR_MECHANIC_INPUT.mHash32 || mechanic.mCRC == BEHAVIOR_MECHANIC_AI.mHash32) {
-		WriteLog("BEHAVIOR_MECHANIC_INPUT");
+		WriteLog("BEHAVIOR_MECHANIC_AI");
 		GetOwner()->QueryInterface(&mInput);
-		WriteLog(std::format("OnBehaviorChange: mInput {:X}", (uintptr_t)mInput));
+		GetOwner()->QueryInterface(&mHumanAI);
 	} else if (mechanic.mCRC == BEHAVIOR_MECHANIC_DAMAGE.mHash32) {
 		WriteLog("BEHAVIOR_MECHANIC_DAMAGE");
 		GetOwner()->QueryInterface(&mSpikeDamage);
@@ -576,9 +578,6 @@ void SuspensionRacer::OnBehaviorChange(const UCrc32 &mechanic) {
 		WriteLog("BEHAVIOR_MECHANIC_RIGIDBODY");
 		GetOwner()->QueryInterface(&mCollisionBody);
 		GetOwner()->QueryInterface(&mRB);
-	} else if (mechanic.mCRC == BEHAVIOR_MECHANIC_AI.mHash32) {
-		WriteLog("BEHAVIOR_MECHANIC_AI");
-		GetOwner()->QueryInterface(&mHumanAI);
 	}
 	WriteLog("OnBehaviorChange finished");
 }
@@ -614,7 +613,8 @@ void SuspensionRacer::Create(const BehaviorParams& bp) {
 	mJumpTime = 0.0f;
 	mJumpAlititude = 0.0f;
 	mTireHeat = 0.0f;
-	ctor_cartuning(&mCarInfo, cartuning_LookupKey(&mCarInfo, GetOwner(), 0));  // todo does this work
+	ctor_cartuning(&mCarInfo, cartuning_LookupKey(&mCarInfo, GetOwner(), 0));
+	gCurrentCarInfo = mCarInfo.GetLayout();
 	mRB = nullptr;
 	mCollisionBody = nullptr;
 	mGameBreaker = 0.0;
@@ -1016,8 +1016,8 @@ void SuspensionRacer::DoDriveForces(State &state) {
 			for (unsigned int i = 0; i < 2; ++i) {
 				unsigned int tire = axle * 2 + i;
 				if (mTires[tire]->IsOnGround()) {
-					mTires[tire]->ApplyDriveTorque((axle_torque * diff.torque_split[i] * traction_control[i]) * fHackTorqueMultiplier);
-					//mTires[tire]->ScaleTractionBoost(traction_boost[i]);
+					mTires[tire]->ApplyDriveTorque((axle_torque * diff.torque_split[i] * traction_control[i]));
+					mTires[tire]->ScaleTractionBoost(traction_boost[i]);
 				}
 			}
 		}
@@ -1379,9 +1379,7 @@ void SuspensionRacer::DoDrifting(const State &state) {
 		mDrift.State = SuspensionRacer::Drift::D_ENTER;
 	}
 
-	if (mDrift.Value <= 0.0f)
-		return;
-	{
+	if (mDrift.Value > 0.0f) {
 		float yaw = ANGLE2RAD(state.slipangle);
 		float ang_vel = state.local_angular_vel.y;
 
@@ -1512,8 +1510,8 @@ void SuspensionRacer::TuneWheelParams(State &state) {
 			lateral_boost = over_boost;
 			friction_boost *= over_boost;
 		}
-		mTires[i]->ScaleTractionBoost(friction_boost);
-		mTires[i]->SetLateralBoost(lateral_boost);
+		mTires[i]->ScaleTractionBoost(friction_boost * fHackFrictionBoost);
+		mTires[i]->SetLateralBoost(lateral_boost * fHackLateralBoost);
 
 		//if (tunings) {
 		//	UMath::Vector2 circle;
@@ -1615,7 +1613,6 @@ void SuspensionRacer::DoWheelForces(State &state) {
 	steering_normals[1] = UMath::Vector4Make(steerR, 1.0f);
 	steering_normals[2] = UMath::Vector4Make(vFwd, 1.0f);
 	steering_normals[3] = UMath::Vector4Make(vFwd, 1.0f);
-	WriteLog(std::format("steering_normals {:.2f} {:.2f} {:.2f}, {:.2f} {:.2f} {:.2f}", steerL.x, steerL.y, steerL.z, steerR.x, steerR.y, steerR.z));
 
 	bool resolve = false;
 	for (unsigned int i = 0; i < 4; ++i) {
@@ -1702,8 +1699,6 @@ void SuspensionRacer::DoWheelForces(State &state) {
 			UMath::Vector3 force;
 			UMath::UnitCross(lateralNormal, groundNormal, driveForce);
 			UMath::Scale(driveForce, wheel.GetLongitudeForce(), driveForce);
-			driveForce *= fHackDriveForceMultiplier;
-			lateralForce *= fHackLateralForceMultiplier;
 			UMath::Add(lateralForce, driveForce, force);
 			UMath::Add(force, verticalForce, force);
 
@@ -1735,40 +1730,12 @@ void SuspensionRacer::DoWheelForces(State &state) {
 			const UMath::Vector3 &force = wheel.GetForce();
 			UMath::RotateTranslate(p, state.matrix, p);
 			wheel.SetPosition(p);
-			WriteLog(std::format("p {:.2f} {:.2f} {:.2f}", p.x, p.y, p.z));
 
-			UMath::Vector3 torque = {};
-			UMath::Vector3 r = {};
+			UMath::Vector3 torque;
+			UMath::Vector3 r;
 			UMath::Sub(p, state.world_cog, r);
 			UMath::Sub(r, state.GetPosition(), r);
-			torque = (UMath::Vector3)r.Cross(force);
-			WriteLog(std::format("r {:.2f} {:.2f} {:.2f}", r.x, r.y, r.z));
-			WriteLog(std::format("force {:.2f} {:.2f} {:.2f}", force.x, force.y, force.z));
-			WriteLog(std::format("torque {:.2f} {:.2f} {:.2f}", torque.x, torque.y, torque.z));
-
-			auto v63 = wheel.mLocalArm.y + wheel.mCompression;
-			auto v64 = wheel.mLocalArm.z;
-			auto v103 = wheel.mLocalArm.x;
-			auto v94 = v103;
-			auto v104 = v63 - rideheight_specs[i / 2u];
-			auto v95 = v104;
-			v103 = v64 * state.matrix.z.x + v104 * state.matrix.y.x + v103 * state.matrix.x.x + state.matrix.p.x;
-			v104 = v104 * state.matrix.y.y + v64 * state.matrix.z.y + v94 * state.matrix.x.y + state.matrix.p.y;
-			auto v66 = v64 * state.matrix.z.z + v95 * state.matrix.y.z + v94 * state.matrix.x.z + state.matrix.p.z;
-			auto v68 = v103 - state.world_cog.x;
-			auto v69 = v104 - state.world_cog.y;
-			auto v139 = v66 - state.world_cog.z;
-			auto v137 = v68 - state.matrix.p.x;
-			auto v70 = v69 - state.matrix.p.y;
-			auto v71 = v139 - state.matrix.p.z;
-
-			// this part is identical to r.Cross(force)
-			torque.x = v70 * wheel.mForce.z - v71 * wheel.mForce.y;
-			torque.y = v71 * wheel.mForce.x - v137 * wheel.mForce.z;
-			torque.z = v137 * wheel.mForce.y - v70 * wheel.mForce.x;
-
-			WriteLog(std::format("torque new {:.2f} {:.2f} {:.2f}", torque.x, torque.y, torque.z));
-
+			UMath::Cross(r, force, torque);
 			UMath::Add(total_force, force, total_force);
 			UMath::Add(total_torque, torque, total_torque);
 		}
@@ -1784,22 +1751,12 @@ void SuspensionRacer::DoWheelForces(State &state) {
 		// total_force -87.99267578 15717.22852 -149.1251526
 		// total_torque -444.7327271 -11.27389526 -925.8071289
 
-		WriteLog(std::format("total_torque 1 {:.2f} {:.2f} {:.2f}", total_torque.x, total_torque.y, total_torque.z));
-		float yaw = total_torque.z * state.matrix.y.z + total_torque.y * state.matrix.y.y + total_torque.x * state.matrix.y.x;
-		//float yaw = state.matrix.y.Dot(total_torque);
-		//[[nodiscard]] double Dot(const NyaVec3Custom& a) const { return x * a.x + y * a.y + z * a.z; }
-		//float counter_yaw = yaw * GetMWCarData()->YAW_SPEED;
-		float counter_yaw = yaw * *(float*)Attrib::Instance::GetAttributePointer(&mCarInfo, Attrib::StringHash32("YAW_SPEED"), 0); // todo this could crash
+		float yaw = UMath::Dot((UMath::Vector3)state.matrix.y, total_torque);
+		float counter_yaw = yaw * GetMWCarData()->YAW_SPEED;
 		if (state.driver_style == STYLE_DRAG) {
 			counter_yaw *= Tweak_DragYawSpeed;
 		}
 		UMath::ScaleAdd((UMath::Vector3)state.matrix.y, counter_yaw - yaw, total_torque, total_torque);
-		WriteLog(std::format("yaw_speed {:.2f}", *(float*)Attrib::Instance::GetAttributePointer(&mCarInfo, Attrib::StringHash32("YAW_SPEED"), 0)));
-		WriteLog(std::format("state.matrix.y {:.2f} {:.2f} {:.2f}", state.matrix.y.x, state.matrix.y.y, state.matrix.y.z));
-		WriteLog(std::format("yaw {:.2f}", yaw));
-		WriteLog(std::format("counter_yaw {:.2f}", counter_yaw));
-		WriteLog(std::format("total_force {:.2f} {:.2f} {:.2f}", total_force.x, total_force.y, total_force.z));
-		WriteLog(std::format("total_torque 2 {:.2f} {:.2f} {:.2f}", total_torque.x, total_torque.y, total_torque.z));
 		mRB->Resolve(&total_force, &total_torque);
 	}
 
@@ -1907,6 +1864,8 @@ static const float TweakGameBreakerRampOutPhysicsTime = 1.0f / 3.0f;
 static const float Tweak_DragAeroMult = 1.5f;
 
 void SuspensionRacer::OnTaskSimulate(float dT) {
+	gCurrentCarInfo = mCarInfo.GetLayout();
+
 	//FUNCTION_LOG("SuspensionRacer::OnTaskSimulate");
 
 	if (!mCollisionBody || !mRB) {
@@ -1963,7 +1922,7 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 	if (state.driver_style == STYLE_DRAG) {
 		aero_pct = Tweak_DragAeroMult;
 	}
-	//DoAerodynamics(state, drag_pct, aero_pct, GetWheel(0).GetLocalArm().z, GetWheel(2).GetLocalArm().z, tunings);
+	DoAerodynamics(state, drag_pct, aero_pct, GetWheel(0).GetLocalArm().z, GetWheel(2).GetLocalArm().z, tunings);
 	DoDriveForces(state);
 	DoWheelForces(state);
 
@@ -1979,7 +1938,7 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 	}
 
 	DoTireHeat(state);
-	//DoJumpStabilizer(state);
+	DoJumpStabilizer(state);
 	//DoSleep(state); // todo?
 	//Chassis::OnTaskSimulate(dT);
 

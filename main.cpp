@@ -70,9 +70,10 @@ namespace UMath {
 	float Sqrt(float a) { return std::sqrt(a); }
 	float Pow(float a, float b) { return std::pow(a, b); }
 	float Pow(int a, int b) { return std::pow(a, b); }
-	float Atan2a(float a1, float a2) {
-		return bATan(a2, a1) * 0.000015258789;
-	}
+	float Atan2a(float a, float b) { return std::atan2(a, b); }
+	//float Atan2a(float a1, float a2) {
+	//	return bATan(a2, a1) * 0.000015258789;
+	//}
 
 	inline void Cross(Vector3 a, Vector3 b, Vector3 &r) {
 		r.x = a.y * b.z - a.z * b.y;
@@ -88,17 +89,6 @@ namespace UMath {
 		result.x = ((m.x.x * v.x) + ((m.z.x * v.z) + (m.y.x * v.y))) + m.p.x;
 		result.y = ((m.x.y * v.x) + ((m.z.y * v.z) + (m.y.y * v.y))) + m.p.y;
 		result.z = ((m.x.z * v.x) + ((m.z.z * v.z) + (m.y.z * v.y))) + m.p.z;
-	}
-
-	inline void RotateTranslate(Vector4 v, Matrix4 m, Vector4 &result) {
-		auto v4 = v.y;
-		auto v5 = v.z;
-		auto v6 = v.w;
-		auto v3 = v.x;
-		result.x = (m.x.x * v.x) + ((m.y.x * v4) + ((m.p.x * v6) + (m.z.x * v5)));
-		result.y = (m.x.y * v3) + ((m.y.y * v4) + ((m.p.y * v6) + (m.z.y * v5)));
-		result.z = (m.x.z * v3) + ((m.y.z * v4) + ((m.p.z * v6) + (m.z.z * v5)));
-		result.w = (m.xw * v3) + ((m.yw * v4) + ((m.pw * v6) + (m.zw * v5)));
 	}
 
 	inline void Unit(Vector3 a, Vector3 &r) {
@@ -188,16 +178,16 @@ namespace UMath {
 	}
 
 	inline float Ramp(const float a, const float amin, const float amax) {
-		auto v3 = amax - amin;
-		if ( v3 <= 0.000001 )
-			return 0.0;
-		auto v5 = (a - amin) / v3;
-		if ( v5 >= 1.0 )
-			return 1.0;
-		auto result = v5;
-		if ( v5 < 0.0 )
-			return 0.0;
-		return result;
+		//auto v3 = amax - amin;
+		//if ( v3 <= 0.000001 )
+		//	return 0.0;
+		//auto v5 = (a - amin) / v3;
+		//if ( v5 >= 1.0 )
+		//	return 1.0;
+		//auto result = v5;
+		//if ( v5 < 0.0 )
+		//	return 0.0;
+		//return result;
 
 		//auto v2 = 1.0;
 		//if ( ((a - amin) / (amax - amin)) < 1.0 )
@@ -207,8 +197,8 @@ namespace UMath {
 		//	v3 = 0.0;
 		//return v3;
 
-		//float arange = amax - amin;
-		//return arange > FLOAT_EPSILON ? std::max(0.0f, std::min((a - amin) / arange, 1.0f)) : 0.0f;
+		float arange = amax - amin;
+		return arange > FLOAT_EPSILON ? std::max(0.0f, std::min((a - amin) / arange, 1.0f)) : 0.0f;
 	}
 
 	// Credits: Brawltendo
@@ -249,14 +239,8 @@ float Table::GetValue(float input) {
 
 std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 
-float fHackDynamicFrictionMultiplier = 1.0;
-float fHackLoadMultiplier = 1.0;
-float fHackDriveGripMultiplier = 1.0;
-float fHackDriveForceMultiplier = 1.0;
-float fHackLateralForceMultiplier = 1.0;
-float fHackLateralGripMultiplier = 1.0;
-float fHackRollingResistanceMultiplier = 1.0;
-float fHackTorqueMultiplier = 1.0;
+float fHackLateralBoost = 1.0;
+float fHackFrictionBoost = 1.0;
 
 // up force seems fine
 // driveForce is too low, calculated through GetLongitudeForce, might be too low too
@@ -308,42 +292,43 @@ void DebugMenu() {
 	ChloeMenuLib::BeginMenu();
 
 	if (pSuspension) {
-		QuickValueEditor("fHackDynamicFrictionMultiplier", fHackDynamicFrictionMultiplier);
-		QuickValueEditor("fHackLoadMultiplier", fHackLoadMultiplier);
-		QuickValueEditor("fHackDriveForceMultiplier", fHackDriveForceMultiplier);
-		QuickValueEditor("fHackLateralForceMultiplier", fHackLateralForceMultiplier);
-		QuickValueEditor("fHackDriveGripMultiplier", fHackDriveGripMultiplier);
-		QuickValueEditor("fHackLateralGripMultiplier", fHackLateralGripMultiplier);
-		QuickValueEditor("fHackRollingResistanceMultiplier", fHackRollingResistanceMultiplier);
-		QuickValueEditor("fHackTorqueMultiplier", fHackTorqueMultiplier);
-		DrawMenuOption(std::format("state.flags - {}", LastChassisState.flags));
-		DrawMenuOption(std::format("state.time - {}", LastChassisState.time));
-		DrawMenuOption(std::format("state.mass - {}", LastChassisState.mass));
-		DrawMenuOption(std::format("state.local_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.local_vel.x, LastChassisState.local_vel.y, LastChassisState.local_vel.z));
-		DrawMenuOption(std::format("state.linear_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.linear_vel.x, LastChassisState.linear_vel.y, LastChassisState.linear_vel.z));
-		DrawMenuOption(std::format("state.speed - {:.2f}", LastChassisState.speed));
-		DrawMenuOption(std::format("MaxSlip - {:.2f}", pSuspension->ComputeMaxSlip(LastChassisState)));
+		QuickValueEditor("fHackLateralBoost", fHackLateralBoost);
+		QuickValueEditor("fHackFrictionBoost", fHackFrictionBoost);
+		//DrawMenuOption(std::format("state.flags - {}", LastChassisState.flags));
+		//DrawMenuOption(std::format("state.time - {}", LastChassisState.time));
+		//DrawMenuOption(std::format("state.mass - {}", LastChassisState.mass));
+		//DrawMenuOption(std::format("state.local_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.local_vel.x, LastChassisState.local_vel.y, LastChassisState.local_vel.z));
+		//DrawMenuOption(std::format("state.linear_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.linear_vel.x, LastChassisState.linear_vel.y, LastChassisState.linear_vel.z));
+		//DrawMenuOption(std::format("state.speed - {:.2f}", LastChassisState.speed));
+		DrawMenuOption(std::format("state.steer_input - {:.2f}", LastChassisState.steer_input));
+		DrawMenuOption(std::format("state.nos_boost - {:.2f}", LastChassisState.nos_boost));
+		DrawMenuOption(std::format("state.shift_boost - {:.2f}", LastChassisState.shift_boost));
+		DrawMenuOption(std::format("mDrift.State - {}", (int)pSuspension->mDrift.State));
+		DrawMenuOption(std::format("mDrift.Value - {:.2f}", pSuspension->mDrift.Value));
+		//DrawMenuOption(std::format("MaxSlip - {:.2f}", pSuspension->ComputeMaxSlip(LastChassisState)));
+		//DrawMenuOption(std::format("MaxSteering - {:.2f}", pSuspension->CalculateMaxSteering(LastChassisState, ISteeringWheel::kGamePad)));
 		DrawMenuOption(std::format("LateralGripScale - {:.2f}", pSuspension->ComputeLateralGripScale(LastChassisState)));
-		DrawMenuOption(std::format("TractionScale - {:.2f}", pSuspension->ComputeTractionScale(LastChassisState)));
+		//DrawMenuOption(std::format("TractionScale - {:.2f}", pSuspension->ComputeTractionScale(LastChassisState)));
 		DrawMenuOption(std::format("Wheels - {:.2f} {:.2f}", pSuspension->mSteering.Wheels[0], pSuspension->mSteering.Wheels[1]));
 		DrawMenuOption(std::format("LastMaximum - {:.2f}", pSuspension->mSteering.LastMaximum));
+		//DrawMenuOption(std::format("mGameBreaker - {:.2f}", pSuspension->mGameBreaker));
 
 		for (int i = 0; i < 4; i++) {
 			auto tire = pSuspension->mTires[i];
 			DrawMenuOption(std::format("Tire {}", i+1));
-			DrawMenuOption(std::format("fHeight[0] - {:.2f}", tire->mWorldPos.fHeight));
 			DrawMenuOption(std::format("fNormal - {:.2f} {:.2f} {:.2f} {:.2f}", tire->mNormal.x, tire->mNormal.y, tire->mNormal.z, tire->mNormal.w));
 			DrawMenuOption(std::format("mCompression - {:.2f}", tire->mCompression));
 			DrawMenuOption(std::format("mLateralSpeed - {:.2f}", tire->mLateralSpeed));
 			DrawMenuOption(std::format("mForce - {:.2f} {:.2f} {:.2f}", tire->mForce.x, tire->mForce.y, tire->mForce.z));
 			DrawMenuOption(std::format("mLongitudeForce - {:.2f}", tire->mLongitudeForce));
+			DrawMenuOption(std::format("mTractionBoost - {:.2f}", tire->mTractionBoost));
+			DrawMenuOption(std::format("mLateralBoost - {:.2f}", tire->mLateralBoost));
+			DrawMenuOption(std::format("mDriftFriction - {:.2f}", tire->mDriftFriction));
+			DrawMenuOption(std::format("mGripBoost - {:.2f}", tire->mGripBoost));
 			DrawMenuOption(std::format("mTraction - {:.2f}", tire->mTraction));
 			DrawMenuOption(std::format("mSlip - {:.2f}", tire->mSlip));
 			DrawMenuOption(std::format("mRadius - {:.2f}", tire->mRadius));
 			DrawMenuOption(std::format("mRoadSpeed - {:.2f}", tire->mRoadSpeed));
-			DrawMenuOption(std::format("DRIVE_GRIP - {:.2f}", tire->mSurface.GetLayout()->DRIVE_GRIP));
-			DrawMenuOption(std::format("LATERAL_GRIP - {:.2f}", tire->mSurface.GetLayout()->LATERAL_GRIP));
-			DrawMenuOption(std::format("ROLLING_RESISTANCE - {:.2f}", tire->mSurface.GetLayout()->ROLLING_RESISTANCE));
 		}
 	}
 	else {

@@ -1,3 +1,7 @@
+float GetSimTimeNew() {
+	return Sim::GetTime() / 1000.0;
+}
+
 namespace Physics {
 	namespace Info {
 		float AerodynamicDownforce(const Attrib::Gen::car_tuning &chassis, const float speed) {
@@ -751,7 +755,7 @@ void SuspensionRacer::DoAerodynamics(const State &state, float drag_pct, float a
 
 		float forwardness = UMath::Max(UMath::Dot(movement_dir, state.GetForwardVector()), 0.0f);
 		forwardness = UMath::Max(AeroDropOffMin, UMath::Pow(forwardness, AeroDropOff));
-		float downforce = aero_pct * upness * forwardness * Physics::Info::AerodynamicDownforce(mCarInfo, state.speed); // todo
+		float downforce = aero_pct * upness * forwardness * Physics::Info::AerodynamicDownforce(mCarInfo, state.speed);
 		// lower downforce when car is in air
 		if (state.ground_effect == 0.0f) {
 			downforce *= 0.8f;
@@ -811,7 +815,7 @@ void SuspensionRacer::DoDriveForces(State &state) {
 		return;
 	}
 
-	float drive_torque = mTransmission->GetDriveTorque();
+	float drive_torque = mTransmission->GetDriveTorque() * fHackTorqueMultiplier;
 	SuspensionRacer::Differential center_diff{};
 	if (drive_torque == 0.0f) {
 		return;
@@ -1053,7 +1057,7 @@ float SuspensionRacer::CalculateSteeringSpeed(State &state) {
 	// using a keyboard will always give you the fastest steering possible
 	float steer_input_speed = (state.steer_input - mSteering.LastInput) / state.time;
 
-	mSteering.InputSpeedCoeffAverage.Record(SteeringInputSpeedCoeffTable.GetValue(std::abs(steer_input_speed)), Sim::GetTime());
+	mSteering.InputSpeedCoeffAverage.Record(SteeringInputSpeedCoeffTable.GetValue(std::abs(steer_input_speed)), GetSimTimeNew());
 
 	// steering speed scales with vehicle forward speed
 	float steer_speed = 180.0f;
@@ -1110,7 +1114,7 @@ float SuspensionRacer::DoHumanSteering(State &state) {
 		newsteer = UMath::Lerp(newsteer, state.steer_input * Tweak_GameBreakerMaxSteer, mGameBreaker);
 	}
 
-	mSteering.InputAverage.Record(mSteering.LastInput, Sim::GetTime());
+	mSteering.InputAverage.Record(mSteering.LastInput, GetSimTimeNew());
 	return DEG2ANGLE(newsteer);
 }
 
@@ -1454,7 +1458,7 @@ void SuspensionRacer::DoWheelForces(State &state) {
 	//	ride_extra = tunings->Value[Physics::Tunings::RIDEHEIGHT];
 	//}
 
-	float time = Sim::GetTime();
+	float time = GetSimTimeNew();
 	float shock_specs[2];
 	float spring_specs[2];
 	float sway_specs[2];
@@ -1488,6 +1492,7 @@ void SuspensionRacer::DoWheelForces(State &state) {
 	steering_normals[1] = UMath::Vector4Make(steerR, 1.0f);
 	steering_normals[2] = UMath::Vector4Make(vFwd, 1.0f);
 	steering_normals[3] = UMath::Vector4Make(vFwd, 1.0f);
+	WriteLog(std::format("steering_normals {:.2f} {:.2f} {:.2f}, {:.2f} {:.2f} {:.2f}", steerL.x, steerL.y, steerL.z, steerR.x, steerR.y, steerR.z));
 
 	bool resolve = false;
 	for (unsigned int i = 0; i < 4; ++i) {
@@ -1615,7 +1620,30 @@ void SuspensionRacer::DoWheelForces(State &state) {
 			WriteLog(std::format("r {:.2f} {:.2f} {:.2f}", r.x, r.y, r.z));
 			WriteLog(std::format("force {:.2f} {:.2f} {:.2f}", force.x, force.y, force.z));
 			WriteLog(std::format("torque {:.2f} {:.2f} {:.2f}", torque.x, torque.y, torque.z));
-			//UMath::Cross(r, force, torque);
+
+			auto v63 = wheel.mLocalArm.y + wheel.mCompression;
+			auto v64 = wheel.mLocalArm.z;
+			auto v103 = wheel.mLocalArm.x;
+			auto v94 = v103;
+			auto v104 = v63 - rideheight_specs[i / 2u];
+			auto v95 = v104;
+			v103 = v64 * state.matrix.z.x + v104 * state.matrix.y.x + v103 * state.matrix.x.x + state.matrix.p.x;
+			v104 = v104 * state.matrix.y.y + v64 * state.matrix.z.y + v94 * state.matrix.x.y + state.matrix.p.y;
+			auto v66 = v64 * state.matrix.z.z + v95 * state.matrix.y.z + v94 * state.matrix.x.z + state.matrix.p.z;
+			auto v68 = v103 - state.world_cog.x;
+			auto v69 = v104 - state.world_cog.y;
+			auto v139 = v66 - state.world_cog.z;
+			auto v137 = v68 - state.matrix.p.x;
+			auto v70 = v69 - state.matrix.p.y;
+			auto v71 = v139 - state.matrix.p.z;
+
+			// this part is identical to r.Cross(force)
+			torque.x = v70 * wheel.mForce.z - v71 * wheel.mForce.y;
+			torque.y = v71 * wheel.mForce.x - v137 * wheel.mForce.z;
+			torque.z = v137 * wheel.mForce.y - v70 * wheel.mForce.x;
+
+			WriteLog(std::format("torque new {:.2f} {:.2f} {:.2f}", torque.x, torque.y, torque.z));
+
 			UMath::Add(total_force, force, total_force);
 			UMath::Add(total_torque, torque, total_torque);
 		}
@@ -1627,19 +1655,28 @@ void SuspensionRacer::DoWheelForces(State &state) {
 		// or maybe 297.5856934 10732.44727 2017.319824
 		// dot result is... 1.94?
 
+		// expected for Resolve is:
+		// total_force -87.99267578 15717.22852 -149.1251526
+		// total_torque -444.7327271 -11.27389526 -925.8071289
+
 		WriteLog(std::format("total_torque 1 {:.2f} {:.2f} {:.2f}", total_torque.x, total_torque.y, total_torque.z));
-		float yaw = state.matrix.y.Dot(total_torque);
+		float yaw = total_torque.z * state.matrix.y.z + total_torque.y * state.matrix.y.y + total_torque.x * state.matrix.y.x;
+		//float yaw = state.matrix.y.Dot(total_torque);
+		//[[nodiscard]] double Dot(const NyaVec3Custom& a) const { return x * a.x + y * a.y + z * a.z; }
 		//float counter_yaw = yaw * mCarInfo.GetLayout()->YAW_SPEED;
 		float counter_yaw = yaw * *(float*)Attrib::Instance::GetAttributePointer(&mCarInfo, Attrib::StringHash32("YAW_SPEED"), 0); // todo this could crash
 		if (state.driver_style == STYLE_DRAG) {
 			counter_yaw *= Tweak_DragYawSpeed;
 		}
 		UMath::ScaleAdd((UMath::Vector3)state.matrix.y, counter_yaw - yaw, total_torque, total_torque);
+		WriteLog(std::format("yaw_speed {:.2f}", *(float*)Attrib::Instance::GetAttributePointer(&mCarInfo, Attrib::StringHash32("YAW_SPEED"), 0)));
 		WriteLog(std::format("state.matrix.y {:.2f} {:.2f} {:.2f}", state.matrix.y.x, state.matrix.y.y, state.matrix.y.z));
 		WriteLog(std::format("yaw {:.2f}", yaw));
 		WriteLog(std::format("counter_yaw {:.2f}", counter_yaw));
 		WriteLog(std::format("total_force {:.2f} {:.2f} {:.2f}", total_force.x, total_force.y, total_force.z));
 		WriteLog(std::format("total_torque 2 {:.2f} {:.2f} {:.2f}", total_torque.x, total_torque.y, total_torque.z));
+		total_force *= fHackForceMultiplier;
+		total_torque *= fHackTorqueMultiplier;
 		mRB->Resolve(&total_force, &total_torque);
 	}
 
@@ -1660,6 +1697,7 @@ void SuspensionRacer::DoWheelForces(State &state) {
 	mNumWheelsOnGround = wheelsOnGround;
 }
 
+SuspensionRacer::State LastChassisState;
 void SuspensionRacer::ComputeState(float dT, State &state) {
 	IRigidBody *irb = GetOwner()->GetRigidBody();
 	state.time = dT;
@@ -1691,7 +1729,8 @@ void SuspensionRacer::ComputeState(float dT, State &state) {
 	state.ebrake_input = mInput->GetControlHandBrake();
 	state.steer_input = UMath::Clamp(mInput->GetControlSteering(), -1.0f, 1.0f);
 
-	state.cog = *irb->GetCenterOfGravity();
+	//state.cog = *irb->GetCenterOfGravity();
+	state.cog = {0,0,0};
 	state.ground_effect = mNumWheelsOnGround * 0.25f;
 	state.mass = irb->GetMass();
 	state.driver_style = GetVehicle()->GetDriverStyle();
@@ -1734,6 +1773,8 @@ void SuspensionRacer::ComputeState(float dT, State &state) {
 	if (GetVehicle()->IsDestroyed()) {
 		state.flags |= State::IS_DESTROYED;
 	}
+
+	LastChassisState = state;
 }
 
 static const float Tweak_SteerDragReduction = 0.15f;

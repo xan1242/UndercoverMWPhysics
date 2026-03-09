@@ -177,10 +177,12 @@ namespace UMath {
 		r.z = a.z - b.z;
 	}
 
+	//UMath::ScaleAdd((UMath::Vector3)state.matrix.y, counter_yaw - yaw, total_torque, total_torque);
+	//total_torque.x = (counter_yaw - yaw) * state.matrix.y.x + total_torque.x;
 	inline void ScaleAdd(const Vector3 &a, const float s, const Vector3 &b, Vector3 &r) {
-		r.x = a.x + b.x * s;
-		r.y = a.y + b.y * s;
-		r.z = a.z + b.z * s;
+		r.x = s * a.x + b.x;
+		r.y = s * a.y + b.y;
+		r.z = s * a.z + b.z;
 	}
 
 	inline float Ramp(const float a, const float amin, const float amax) {
@@ -226,24 +228,56 @@ float Table::GetValue(float input) {
 
 std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 
+float fHackForceMultiplier = 1.0;
+float fHackTorqueMultiplier = 1.0;
+
 #include "decomp/AverageWindow.h"
 #include "decomp/SuspensionRacer.h"
 #include "decomp/MWChassis.cpp"
 #include "decomp/SuspensionRacer.cpp"
+
+void ValueEditorMenu(float& value) {
+	ChloeMenuLib::BeginMenu();
+
+	static char inputString[1024] = {};
+	ChloeMenuLib::AddTextInputToString(inputString, 1024, true);
+	ChloeMenuLib::SetEnterHint("Apply");
+
+	if (DrawMenuOption(inputString + (std::string)"...", "", false, false) && inputString[0]) {
+		value = std::stof(inputString);
+		memset(inputString,0,sizeof(inputString));
+		ChloeMenuLib::BackOut();
+	}
+
+	ChloeMenuLib::EndMenu();
+}
+
+void QuickValueEditor(const char* name, float& value) {
+	if (DrawMenuOption(std::format("{} - {}", name, value))) { ValueEditorMenu(value); }
+}
 
 SuspensionRacer* pSuspension = nullptr;
 void DebugMenu() {
 	ChloeMenuLib::BeginMenu();
 
 	if (pSuspension) {
+		QuickValueEditor("fHackForceMultiplier", fHackForceMultiplier);
+		QuickValueEditor("fHackTorqueMultiplier", fHackTorqueMultiplier);
+		DrawMenuOption(std::format("state.time - {}", LastChassisState.time));
+		DrawMenuOption(std::format("state.local_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.local_vel.x, LastChassisState.local_vel.y, LastChassisState.local_vel.z));
+		DrawMenuOption(std::format("state.linear_vel - {:.2f} {:.2f} {:.2f}", LastChassisState.linear_vel.x, LastChassisState.linear_vel.y, LastChassisState.linear_vel.z));
+		DrawMenuOption(std::format("state.speed - {:.2f}", LastChassisState.speed));
 		DrawMenuOption(std::format("Wheels - {:.2f} {:.2f}", pSuspension->mSteering.Wheels[0], pSuspension->mSteering.Wheels[1]));
 
-		auto tire = pSuspension->mTires[0];
-		DrawMenuOption(std::format("fHeight[0] - {:.2f}", tire->mWorldPos.fHeight));
-		DrawMenuOption(std::format("fNormal - {:.2f} {:.2f} {:.2f} {:.2f}", tire->mNormal.x, tire->mNormal.y, tire->mNormal.z, tire->mNormal.w));
-		DrawMenuOption(std::format("mCompression - {:.2f}", tire->mCompression));
-		DrawMenuOption(std::format("mLateralSpeed - {:.2f}", tire->mLateralSpeed));
-		DrawMenuOption(std::format("mForce - {:.2f} {:.2f} {:.2f}", tire->mForce.x, tire->mForce.y, tire->mForce.z));
+		for (int i = 0; i < 4; i++) {
+			auto tire = pSuspension->mTires[i];
+			DrawMenuOption(std::format("Tire {}", i+1));
+			DrawMenuOption(std::format("fHeight[0] - {:.2f}", tire->mWorldPos.fHeight));
+			DrawMenuOption(std::format("fNormal - {:.2f} {:.2f} {:.2f} {:.2f}", tire->mNormal.x, tire->mNormal.y, tire->mNormal.z, tire->mNormal.w));
+			DrawMenuOption(std::format("mCompression - {:.2f}", tire->mCompression));
+			DrawMenuOption(std::format("mLateralSpeed - {:.2f}", tire->mLateralSpeed));
+			DrawMenuOption(std::format("mForce - {:.2f} {:.2f} {:.2f}", tire->mForce.x, tire->mForce.y, tire->mForce.z));
+		}
 	}
 	else {
 		DrawMenuOption("woof?");

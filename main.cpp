@@ -318,6 +318,7 @@ void DebugMenu() {
 		//DrawMenuOption(std::format("TractionScale - {:.2f}", pSuspension->ComputeTractionScale(LastChassisState)));
 		DrawMenuOption(std::format("Wheels - {:.2f} {:.2f}", pSuspension->mSteering.Wheels[0], pSuspension->mSteering.Wheels[1]));
 		DrawMenuOption(std::format("LastMaximum - {:.2f}", pSuspension->mSteering.LastMaximum));
+		DrawMenuOption(std::format("GetMaxSpeedometer - {:.2f}", pSuspension->mTransmission->GetMaxSpeedometer()));
 		//DrawMenuOption(std::format("mGameBreaker - {:.2f}", pSuspension->mGameBreaker));
 
 		for (int i = 0; i < 4; i++) {

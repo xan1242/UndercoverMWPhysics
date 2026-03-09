@@ -51,7 +51,7 @@ struct MWCarTuning {
 	AxlePair SECTION_WIDTH;
 	TempAxlePairTable STATIC_GRIP;
 	TempTable STEERING;
-	float YAW_CONTROL[4];
+	std::vector<float> YAW_CONTROL;
 	float YAW_SPEED;
 
 	// transmission
@@ -106,10 +106,7 @@ auto GetMWCarData() {
 	tmp.SECTION_WIDTH = {225,225};
 	tmp.STATIC_GRIP = {1.6,1.7};
 	tmp.STEERING = 1.0;
-	tmp.YAW_CONTROL[0] = 0.0;
-	tmp.YAW_CONTROL[1] = 0.1;
-	tmp.YAW_CONTROL[2] = 0.3;
-	tmp.YAW_CONTROL[3] = 1.0;
+	tmp.YAW_CONTROL = {0.0, 0.1, 0.3, 1.0};
 	tmp.YAW_SPEED = 0.4;
 
 	// transmission
@@ -846,10 +843,9 @@ void SuspensionRacer::DoAerodynamics(const State &state, float drag_pct, float a
 		// letting off the throttle will increase drag by OffThrottleDragFactor
 		float drag = state.speed * drag_pct * dragcoef_spec;
 		drag += drag * (OffThrottleDragFactor - 1.0f) * (1.0f - state.gas_input);
-		// todo?
-		//if (tunings) {
-		//	drag += drag * Tweak_TuningAero_Drag * tunings->Value[Physics::Tunings::AERODYNAMICS];
-		//}
+		if (tunings) {
+			drag += drag * Tweak_TuningAero_Drag * tunings->Value[Physics::Tunings::AERODYNAMICS];
+		}
 
 		UMath::Vector3 drag_vector(state.linear_vel);
 		drag_vector *= -drag;
@@ -883,10 +879,9 @@ void SuspensionRacer::DoAerodynamics(const State &state, float drag_pct, float a
 		if (state.ground_effect == 0.0f) {
 			downforce *= 0.8f;
 		}
-		// todo
-		//if (tunings) {
-		//	downforce += downforce * Tweak_TuningAero_DownForce * tunings->Value[Physics::Tunings::AERODYNAMICS];
-		//}
+		if (tunings) {
+			downforce += downforce * Tweak_TuningAero_DownForce * tunings->Value[Physics::Tunings::AERODYNAMICS];
+		}
 
 		if (downforce > 0.0f) {
 			UMath::Vector3 aero_center{state.cog.x, state.cog.y, state.cog.z};
@@ -1138,10 +1133,9 @@ float SuspensionRacer::CalculateMaxSteering(State &state, ISteeringWheel::Steeri
 	max_steering *= SteeringRangeCoeffTable.GetValue(std::abs(mSteering.InputAverage.GetValue()));
 
 	const Physics::Tunings *tunings = GetVehicle()->GetTunings();
-	// todo
-	//if (tunings) {
-	//	max_steering *= tunings->Value[Physics::Tunings::STEERING] * Tweak_TuningSteering_Ratio + 1.0f;
-	//}
+	if (tunings) {
+		max_steering *= tunings->Value[Physics::Tunings::STEERING] * Tweak_TuningSteering_Ratio + 1.0f;
+	}
 
 	float collision_coeff;
 	// reduce steering range after collisions
@@ -1271,7 +1265,18 @@ float SuspensionRacer::CalcYawControlLimit(float speed) const {
 		float percent = UMath::Min(UMath::Abs(speed) / maxspeed, 1.0f);
 
 		// todo!! these are different in uc!
-		unsigned int numunits = UNDERCOVER_YawControl.size();
+		unsigned int numunits = GetMWCarData()->YAW_CONTROL.size();
+		if (numunits > 1) {
+			float ratio = (numunits - 1) * percent;
+			unsigned int index1 = static_cast<unsigned int>(ratio);
+			ratio -= index1;
+			unsigned int index2 = UMath::Min(numunits - 1, index1 + 1);
+			float a = GetMWCarData()->YAW_CONTROL[index1];
+			float b = GetMWCarData()->YAW_CONTROL[index2];
+			return a + (b - a) * ratio;
+		}
+
+		/*unsigned int numunits = UNDERCOVER_YawControl.size();
 		if (numunits > 1) {
 			float ratio = (numunits - 1) * percent;
 			unsigned int index1 = static_cast<unsigned int>(ratio);
@@ -1280,7 +1285,7 @@ float SuspensionRacer::CalcYawControlLimit(float speed) const {
 			float a = UNDERCOVER_YawControl[index1];
 			float b = UNDERCOVER_YawControl[index2];
 			return a + (b - a) * ratio;
-		}
+		}*/
 	}
 	return UNDERCOVER_YawControl[0];
 }
@@ -1574,10 +1579,9 @@ void SuspensionRacer::DoWheelForces(State &state) {
 
 	float ride_extra = 0.0f;
 	const Physics::Tunings *tunings = GetVehicle()->GetTunings();
-	// todo
-	//if (tunings) {
-	//	ride_extra = tunings->Value[Physics::Tunings::RIDEHEIGHT];
-	//}
+	if (tunings) {
+		ride_extra = tunings->Value[Physics::Tunings::RIDEHEIGHT];
+	}
 
 	float time = GetSimTimeNew();
 	float shock_specs[2];
@@ -1870,10 +1874,9 @@ void SuspensionRacer::OnTaskSimulate(float dT) {
 
 	float ride_extra = 0.0f;
 	const Physics::Tunings *tunings = GetVehicle()->GetTunings();
-	// todo
-	//if (tunings) {
-	//	ride_extra = tunings->Value[Physics::Tunings::RIDEHEIGHT];
-	//}
+	if (tunings) {
+		ride_extra = tunings->Value[Physics::Tunings::RIDEHEIGHT];
+	}
 	SetCOG(0.0, ride_extra);
 
 	State state;

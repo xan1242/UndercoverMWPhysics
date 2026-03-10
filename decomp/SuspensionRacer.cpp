@@ -819,7 +819,7 @@ void SuspensionRacer::DoDriveForces(State &state) {
 		return;
 	}
 
-	float drive_torque = mTransmission->GetDriveTorqueAtEngine();
+	float drive_torque = mTransmission->GetDriveTorque();
 	SuspensionRacer::Differential center_diff{};
 	if (drive_torque == 0.0f) {
 		return;

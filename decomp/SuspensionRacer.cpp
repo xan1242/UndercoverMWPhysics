@@ -421,7 +421,7 @@ void SuspensionRacer::CreateTires() {
 		delete mTires[i];
 		bool is_front = IsFront(i);
 		float diameter = WheelDiameter(mCarInfo, is_front);
-		mTires[i] = new Tire(diameter * 0.5f, i, &mCarInfo);
+		mTires[i] = new Tire(diameter * 0.5f, i, &mCarInfo, mVehicle);
 	}
 	UMath::Vector3 dimension;
 	GetOwner()->GetRigidBody()->GetDimension(&dimension);
@@ -496,7 +496,6 @@ void SuspensionRacer::Create(const BehaviorParams& bp) {
 	mJumpAlititude = 0.0f;
 	mTireHeat = 0.0f;
 	ctor_cartuning(&mCarInfo, cartuning_LookupKey(&mCarInfo, GetOwner(), 0));
-	gCurrentCarInfo = mCarInfo.GetLayout();
 	mRB = nullptr;
 	mCollisionBody = nullptr;
 	mGameBreaker = 0.0;
@@ -1751,8 +1750,6 @@ static const float TweakGameBreakerRampOutPhysicsTime = 1.0f / 3.0f;
 static const float Tweak_DragAeroMult = 1.5f;
 
 void SuspensionRacer::OnTaskSimulate(float dT) {
-	gCurrentCarInfo = mCarInfo.GetLayout();
-
 	//FUNCTION_LOG("SuspensionRacer::OnTaskSimulate");
 
 	if (!mCollisionBody || !mRB) {

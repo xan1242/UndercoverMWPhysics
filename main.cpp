@@ -18,8 +18,23 @@ void WriteLog(const std::string& str) {
 	file.flush();
 }
 
+wchar_t gDLLDir[MAX_PATH];
+class DLLDirSetter {
+public:
+	wchar_t backup[MAX_PATH];
+
+	DLLDirSetter() {
+		GetCurrentDirectoryW(MAX_PATH, backup);
+		SetCurrentDirectoryW(gDLLDir);
+	}
+	~DLLDirSetter() {
+		SetCurrentDirectoryW(backup);
+	}
+};
+
 #define FUNCTION_LOG(name) WriteLog(std::format("{} called from {:X}", name, (uintptr_t)__builtin_return_address(0)));
-#define ICHASSIS_FUNCTION_LOG(name) WriteLog(std::format("IChassis::{} called from {:X}", name, (uintptr_t)__builtin_return_address(0)))
+//#define ICHASSIS_FUNCTION_LOG(name) WriteLog(std::format("IChassis::{} called from {:X}", name, (uintptr_t)__builtin_return_address(0)))
+#define ICHASSIS_FUNCTION_LOG(name) {}
 
 #include "decomp/ConversionUtil.hpp"
 
@@ -239,8 +254,10 @@ float Table::GetValue(float input) {
 
 std::vector<float> UNDERCOVER_YawControl = { 0.1, 0.2, 0.65, 1 };
 
+#include "MWCarTuning.h"
 #include "decomp/AverageWindow.h"
 #include "decomp/SuspensionRacer.h"
+#include "MWCarTuning.cpp"
 #include "decomp/MWChassis.cpp"
 #include "decomp/SuspensionRacer.cpp"
 
@@ -389,12 +406,14 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID) {
 				return TRUE;
 			}
 
+			GetCurrentDirectoryW(MAX_PATH, gDLLDir);
+
 			NyaHooks::WorldServiceHook::Init();
 			NyaHooks::WorldServiceHook::aPreFunctions.push_back(AssistLoop);
 
 			ChloeMenuLib::RegisterMenu("Debug Menu", &DebugMenu);
 
-			InitMWCarTunings();
+			LoadCarTuningFromFile("orig/bmwm3gtre46_top");
 
 			//NyaHookLib::PatchRelative(NyaHookLib::CALL, 0x73F88D, 0x6DB670);
 			NyaHookLib::PatchRelative(NyaHookLib::JMP, 0x73F830, &ChassisHumanConstructHooked);

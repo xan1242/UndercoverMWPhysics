@@ -1,190 +1,3 @@
-float UNDERCOVER_BrakesAtValue = 0.0;
-float UNDERCOVER_StaticGripAtValue = 0.0;
-float UNDERCOVER_RollCenterAtValue = 0.0;
-float UNDERCOVER_AeroCGAtValue = 0.0;
-float UNDERCOVER_AeroCoeffAtValue = 0.0;
-float UNDERCOVER_SuspensionAtValue = 0.0;
-float UNDERCOVER_SteeringAtValue = 0.0;
-
-struct MWCarTuning {
-	std::string carName;
-
-	struct TempTable {
-		float value;
-
-		TempTable() {}
-		TempTable(float f) { value = f; }
-		float GetValue(float) { return value; }
-	};
-
-	struct TempAxlePairTable {
-		TempTable pair[2];
-
-		TempTable& At(int i) { return pair[i]; }
-	};
-
-	// chassis
-	TempTable AERO_CG;
-	TempTable AERO_COEFFICIENT;
-	float DRAG_COEFFICIENT;
-	float FRONT_AXLE;
-	float FRONT_WEIGHT_BIAS;
-	float RENDER_MOTION;
-	AxlePair RIDE_HEIGHT;
-	TempTable ROLL_CENTER;
-	float SHOCK_BLOWOUT;
-	AxlePair SHOCK_DIGRESSION;
-	TempAxlePairTable SHOCK_EXT_STIFFNESS;
-	TempAxlePairTable SHOCK_STIFFNESS;
-	AxlePair SHOCK_VALVING;
-	AxlePair SPRING_PROGRESSION;
-	AxlePair SPRING_STIFFNESS;
-	TempAxlePairTable SWAYBAR_STIFFNESS;
-	AxlePair TRACK_WIDTH;
-	AxlePair TRAVEL;
-	float WHEEL_BASE;
-
-	// brakes
-	AxlePair BRAKE_LOCK;
-	TempAxlePairTable BRAKES;
-	TempTable EBRAKE;
-
-	// tires
-	AxlePair ASPECT_RATIO;
-	AxlePair DYNAMIC_GRIP;
-	AxlePair GRIP_SCALE;
-	AxlePair RIM_SIZE;
-	AxlePair SECTION_WIDTH;
-	TempAxlePairTable STATIC_GRIP;
-	TempTable STEERING;
-	std::vector<float> YAW_CONTROL;
-	float YAW_SPEED;
-
-	// transmission
-	//float CLUTCH_SLIP;
-	float DIFFERENTIAL[3];
-	//float FINAL_GEAR;
-	//float GEAR_EFFICIENCY[9];
-	//float GEAR_RATIO[9];
-	//float OPTIMAL_SHIFT;
-	//float SHIFT_SPEED;
-	//float TORQUE_CONVERTER;
-	float TORQUE_SPLIT;
-};
-std::vector<MWCarTuning> aCarTunings;
-MWCarTuning* GetCarTuning(const char* model) {
-	for (auto& tuning : aCarTunings) {
-		if (tuning.carName == model) return &tuning;
-	}
-	return &aCarTunings[0];
-}
-
-void InitMWCarTunings() {
-	{
-		MWCarTuning tmp;
-		tmp.carName = "elise";
-		// chassis
-		tmp.AERO_CG = 50.0;
-		tmp.AERO_COEFFICIENT = 0.14;
-		tmp.DRAG_COEFFICIENT = 0.22;
-		tmp.FRONT_AXLE = 1.13;
-		tmp.FRONT_WEIGHT_BIAS = 53;
-		tmp.RENDER_MOTION = 1.0;
-		tmp.RIDE_HEIGHT = {8, 8};
-		tmp.ROLL_CENTER = 11;
-		tmp.SHOCK_BLOWOUT = 5;
-		tmp.SHOCK_DIGRESSION = {0.1, 0.1};
-		tmp.SHOCK_EXT_STIFFNESS = {35, 35};
-		tmp.SHOCK_STIFFNESS = {30, 30};
-		tmp.SHOCK_VALVING = {18, 18};
-		tmp.SPRING_PROGRESSION = {6.1, 6.1};
-		tmp.SPRING_STIFFNESS = {450, 400};
-		tmp.SWAYBAR_STIFFNESS = {200, 200};
-		tmp.TRACK_WIDTH = {1.465, 1.522};
-		tmp.TRAVEL = {6.5, 6.5};
-		tmp.WHEEL_BASE = 2.35;
-
-		// brakes
-		tmp.BRAKE_LOCK = {1.0, 2.75};
-		tmp.BRAKES = {280, 350};
-		tmp.EBRAKE = 400;
-
-		// tires
-		tmp.ASPECT_RATIO = {45, 45};
-		tmp.DYNAMIC_GRIP = {1.4, 1.5};
-		tmp.GRIP_SCALE = {1.0, 1.0};
-		tmp.RIM_SIZE = {17, 17};
-		tmp.SECTION_WIDTH = {225, 225};
-		tmp.STATIC_GRIP = {1.6, 1.7};
-		tmp.STEERING = 1.0;
-		tmp.YAW_CONTROL = {0.0, 0.1, 0.3, 1.0};
-		tmp.YAW_SPEED = 0.4;
-
-		// transmission
-		tmp.DIFFERENTIAL[0] = 0.85;
-		tmp.DIFFERENTIAL[1] = 0.85;
-		tmp.DIFFERENTIAL[2] = 0.0;
-		tmp.TORQUE_SPLIT = 0.0;
-		aCarTunings.push_back(tmp);
-	}
-	{
-		MWCarTuning tmp;
-		tmp.carName = "gti_top";
-		// chassis
-		tmp.AERO_CG = 47.0;
-		tmp.AERO_COEFFICIENT = 0.24;
-		tmp.DRAG_COEFFICIENT = 0.35;
-		tmp.FRONT_AXLE = 1.17;
-		tmp.FRONT_WEIGHT_BIAS = 53.25;
-		tmp.RENDER_MOTION = 0.5;
-		tmp.RIDE_HEIGHT = {8, 8};
-		tmp.ROLL_CENTER = 9;
-		tmp.SHOCK_BLOWOUT = 5;
-		tmp.SHOCK_DIGRESSION = {0.1, 0.1};
-		tmp.SHOCK_EXT_STIFFNESS = {65, 65};
-		tmp.SHOCK_STIFFNESS = {60, 55};
-		tmp.SHOCK_VALVING = {20, 20};
-		tmp.SPRING_PROGRESSION = {7, 7};
-		tmp.SPRING_STIFFNESS = {450, 400};
-		tmp.SWAYBAR_STIFFNESS = {500, 500};
-		tmp.TRACK_WIDTH = {1.539, 1.538};
-		tmp.TRAVEL = {6.5, 6.5};
-		tmp.WHEEL_BASE = 2.578;
-
-		// brakes
-		tmp.BRAKE_LOCK = {1.0, 3.5};
-		tmp.BRAKES = {390, 475};
-		tmp.EBRAKE = 750;
-
-		// tires
-		tmp.ASPECT_RATIO = {45, 45};
-		tmp.DYNAMIC_GRIP = {1.85, 1.9};
-		tmp.GRIP_SCALE = {1.05, 1.1};
-		tmp.RIM_SIZE = {17, 17};
-		tmp.SECTION_WIDTH = {235, 235};
-		tmp.STATIC_GRIP = {2.1, 2.1};
-		tmp.STEERING = 1.0;
-		tmp.YAW_CONTROL = {0.1, 0.6, 0.8, 1.25};
-		tmp.YAW_SPEED = 0.35;
-
-		// transmission
-		tmp.DIFFERENTIAL[0] = 0.7;
-		tmp.DIFFERENTIAL[1] = 0.7;
-		tmp.DIFFERENTIAL[2] = 0.0;
-		tmp.TORQUE_SPLIT = 1.0;
-		aCarTunings.push_back(tmp);
-	}
-}
-
-class SuspensionRacer;
-Attrib::Gen::car_tuning::_LayoutStruct* gCurrentCarInfo = nullptr;
-
-#ifdef SUSPENSIONRACER_ELISE_TEST
-MWCarTuning* GetMWCarData(const SuspensionRacer* pThis);
-#else
-Attrib::Gen::car_tuning::_LayoutStruct* GetMWCarData(const SuspensionRacer* pThis);
-#endif
-
 class MWWheel {
 public:
 	WWorldPos mWorldPos;
@@ -417,8 +230,8 @@ public:
 
 	class Tire : public MWWheel {
 	public:
-		Tire(float radius, int index, const Attrib::Gen::car_tuning *specs)
-				: MWWheel(1), mRadius(UMath::Max(radius, 0.1f)), mWheelIndex(index), mAxleIndex(index >> 1), mSpecs(specs), mBrake(0.0f),
+		Tire(float radius, int index, const Attrib::Gen::car_tuning *specs, IVehicle* vehicle)
+				: MWWheel(1), mRadius(UMath::Max(radius, 0.1f)), mWheelIndex(index), mAxleIndex(index >> 1), mSpecs(specs), mVehicle(vehicle), mBrake(0.0f),
 				  mEBrake(0.0f), mAV(0.0f), mLoad(0.0f), mLateralForce(0.0f), mLongitudeForce(0.0f), mDriveTorque(0.0f), mBrakeTorque(0.0f), mLateralBoost(1.0f),
 				  mTractionBoost(1.0f), mSlip(0.0f), mLastTorque(0.0f), mRoadSpeed(0.0f), mAngularAcc(0.0f), mTraction(1.0f), mBottomOutTime(0.0f),
 				  mSlipAngle(0.0f), mTractionCircle(UMath::Vector2(1.0f, 1.0f)), mMaxSlip(0.5f), mGripBoost(1.0f), mDriftFriction(1.0f), mLateralSpeed(0.0f),
@@ -553,38 +366,38 @@ public:
 			mLateralSpeed = 0.0f;
 		}
 
-		// total size: 0x140
-		const float mRadius;                // offset 0xC4, size 0x4
-		float mBrake;                       // offset 0xC8, size 0x4
-		float mEBrake;                      // offset 0xCC, size 0x4
-		float mAV;                          // offset 0xD0, size 0x4
-		float mLoad;                        // offset 0xD4, size 0x4
-		float mLateralForce;                // offset 0xD8, size 0x4
-		float mLongitudeForce;              // offset 0xDC, size 0x4
-		float mDriveTorque;                 // offset 0xE0, size 0x4
-		float mBrakeTorque;                 // offset 0xE4, size 0x4
-		float mLateralBoost;                // offset 0xE8, size 0x4
-		float mTractionBoost;               // offset 0xEC, size 0x4
-		float mSlip;                        // offset 0xF0, size 0x4
-		float mLastTorque;                  // offset 0xF4, size 0x4
-		const int mWheelIndex;              // offset 0xF8, size 0x4
-		float mRoadSpeed;                   // offset 0xFC, size 0x4
-		const Attrib::Gen::car_tuning *mSpecs;   // offset 0x100, size 0x4
-		float mAngularAcc;                  // offset 0x108, size 0x4
-		const int mAxleIndex;               // offset 0x10C, size 0x4
-		float mTraction;                    // offset 0x110, size 0x4
-		float mBottomOutTime;               // offset 0x114, size 0x4
-		float mSlipAngle;                   // offset 0x118, size 0x4
-		UMath::Vector2 mTractionCircle;     // offset 0x11C, size 0x8
-		float mMaxSlip;                     // offset 0x124, size 0x4
-		float mGripBoost;                   // offset 0x128, size 0x4
-		float mDriftFriction;               // offset 0x12C, size 0x4
-		float mLateralSpeed;                // offset 0x130, size 0x4
-		bool mBrakeLocked;                  // offset 0x134, size 0x4
+		const float mRadius;
+		float mBrake;
+		float mEBrake;
+		float mAV;
+		float mLoad;
+		float mLateralForce;
+		float mLongitudeForce;
+		float mDriveTorque;
+		float mBrakeTorque;
+		float mLateralBoost;
+		float mTractionBoost;
+		float mSlip;
+		float mLastTorque;
+		const int mWheelIndex;
+		float mRoadSpeed;
+		const Attrib::Gen::car_tuning *mSpecs;
+		IVehicle *mVehicle;
+		float mAngularAcc;
+		const int mAxleIndex;
+		float mTraction;
+		float mBottomOutTime;
+		float mSlipAngle;
+		UMath::Vector2 mTractionCircle;
+		float mMaxSlip;
+		float mGripBoost;
+		float mDriftFriction;
+		float mLateralSpeed;
+		bool mBrakeLocked;
 
-		enum LastRotationSign { WAS_POSITIVE, WAS_ZERO, WAS_NEGATIVE } mLastSign; // offset 0x138, size 0x4
+		enum LastRotationSign { WAS_POSITIVE, WAS_ZERO, WAS_NEGATIVE } mLastSign;
 
-		float mDragReduction; // offset 0x13C, size 0x4
+		float mDragReduction;
 	};
 
 	float mJumpTime;
@@ -782,19 +595,3 @@ public:
 		return mTires[idx]->GetSlipAngle();
 	}
 };
-
-#ifdef SUSPENSIONRACER_ELISE_TEST
-MWCarTuning* GetMWCarData(const SuspensionRacer* pThis) {
-	return GetCarTuning("gti");
-}
-MWCarTuning* GetMWCarData(const SuspensionRacer::Tire* pThis) { // todo
-	return GetCarTuning("gti");
-}
-#else
-Attrib::Gen::car_tuning::_LayoutStruct* GetMWCarData(const SuspensionRacer* pThis) {
-	return gCurrentCarInfo;
-}
-Attrib::Gen::car_tuning::_LayoutStruct* GetMWCarData(const SuspensionRacer::Tire* pThis) {
-	return gCurrentCarInfo;
-}
-#endif

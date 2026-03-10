@@ -1151,7 +1151,8 @@ float SuspensionRacer::CalcYawControlLimit(float speed) const {
 		float percent = UMath::Min(UMath::Abs(speed) / maxspeed, 1.0f);
 
 		// todo!! these are different in uc!
-		unsigned int numunits = GetMWCarData()->YAW_CONTROL.size();
+#ifdef SUSPENSIONRACER_ELISE_TEST
+		/*unsigned int numunits = GetMWCarData()->YAW_CONTROL.size();
 		if (numunits > 1) {
 			float ratio = (numunits - 1) * percent;
 			unsigned int index1 = static_cast<unsigned int>(ratio);
@@ -1160,9 +1161,9 @@ float SuspensionRacer::CalcYawControlLimit(float speed) const {
 			float a = GetMWCarData()->YAW_CONTROL[index1];
 			float b = GetMWCarData()->YAW_CONTROL[index2];
 			return a + (b - a) * ratio;
-		}
-
-		/*unsigned int numunits = UNDERCOVER_YawControl.size();
+		}*/
+#else
+		unsigned int numunits = UNDERCOVER_YawControl.size();
 		if (numunits > 1) {
 			float ratio = (numunits - 1) * percent;
 			unsigned int index1 = static_cast<unsigned int>(ratio);
@@ -1171,7 +1172,8 @@ float SuspensionRacer::CalcYawControlLimit(float speed) const {
 			float a = UNDERCOVER_YawControl[index1];
 			float b = UNDERCOVER_YawControl[index2];
 			return a + (b - a) * ratio;
-		}*/
+		}
+#endif
 	}
 	return UNDERCOVER_YawControl[0];
 }
@@ -1634,7 +1636,11 @@ void SuspensionRacer::DoWheelForces(State &state) {
 		// total_torque -444.7327271 -11.27389526 -925.8071289
 
 		float yaw = UMath::Dot((UMath::Vector3)state.matrix.y, total_torque);
+#ifdef SUSPENSIONRACER_ELISE_TEST
 		float counter_yaw = yaw * GetMWCarData()->YAW_SPEED;
+#else
+		float counter_yaw = yaw * *(float*)Attrib::Instance::GetAttributePointer(&mCarInfo, Attrib::StringHash32("YAW_SPEED"), 0);
+#endif
 		if (state.driver_style == STYLE_DRAG) {
 			counter_yaw *= Tweak_DragYawSpeed;
 		}

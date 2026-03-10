@@ -73,8 +73,7 @@ struct MWCarTuning {
 // data from mw elise
 Attrib::Gen::car_tuning::_LayoutStruct* gCurrentCarInfo = nullptr;
 auto GetMWCarData() {
-	//return gCurrentCarInfo;
-
+#ifdef SUSPENSIONRACER_ELISE_TEST
 	static MWCarTuning tmp;
 	// chassis
 	tmp.AERO_CG = 50.0;
@@ -119,6 +118,9 @@ auto GetMWCarData() {
 	tmp.DIFFERENTIAL[2] = 0;
 	tmp.TORQUE_SPLIT = 0;
 	return &tmp;
+#else
+	return gCurrentCarInfo;
+#endif
 }
 
 class MWWheel {
@@ -607,11 +609,11 @@ public:
 	}
 
 	bool RearWheelDrive() {
-		return mCarInfo.GetLayout()->TORQUE_SPLIT < 1.0f;
+		return GetMWCarData()->TORQUE_SPLIT < 1.0f;
 	}
 
 	bool FrontWheelDrive() {
-		return mCarInfo.GetLayout()->TORQUE_SPLIT > 0.0f;
+		return GetMWCarData()->TORQUE_SPLIT > 0.0f;
 	}
 
 	bool IsDriveWheel(unsigned int i) {

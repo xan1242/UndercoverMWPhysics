@@ -295,6 +295,14 @@ void QuickValueEditor(const char* name, float& value) {
 
 // DoDriveForces is almost entirely responsible for acceleration in MW, without it the car just rolls
 
+// rx7 mw:
+// mass 1280
+// tensor scale 1.0 3.5 1.0
+
+// rx7 uc:
+// mass 1270
+// tensor scale 1.2 1.6 1.2
+
 SuspensionRacer* pSuspension = nullptr;
 void DebugMenu() {
 	ChloeMenuLib::BeginMenu();
@@ -310,6 +318,13 @@ void DebugMenu() {
 			}
 		}
 		DrawMenuOption(std::format("steer_type {}", (int)steer_type));
+
+		if (auto veh = VEHICLE_LIST::GetList(VEHICLE_PLAYERS)[0]) {
+			DrawMenuOption(std::format("state.speed {:.2f}", LastChassisState.speed));
+			DrawMenuOption(std::format("GetSpeedometer() {:.2f}", veh->mCOMObject->Find<ITransmission>()->GetSpeedometer()));
+			DrawMenuOption(std::format("GetMaxSpeedometer() {:.2f}", veh->mCOMObject->Find<ITransmission>()->GetMaxSpeedometer()));
+			DrawMenuOption(std::format("GetPerfectLaunch() {:.2f}", veh->GetPerfectLaunch()));
+		}
 
 		//QuickValueEditor("BrakesAtValue", UNDERCOVER_BrakesAtValue);
 		//QuickValueEditor("StaticGripAtValue", UNDERCOVER_StaticGripAtValue);
@@ -346,7 +361,6 @@ void DebugMenu() {
 		//DrawMenuOption(std::format("TractionScale - {:.2f}", pSuspension->ComputeTractionScale(LastChassisState)));
 		DrawMenuOption(std::format("Wheels - {:.2f} {:.2f}", pSuspension->mSteering.Wheels[0], pSuspension->mSteering.Wheels[1]));
 		DrawMenuOption(std::format("LastMaximum - {:.2f}", pSuspension->mSteering.LastMaximum));
-		DrawMenuOption(std::format("GetMaxSpeedometer - {:.2f}", pSuspension->mTransmission->GetMaxSpeedometer()));
 		//DrawMenuOption(std::format("mGameBreaker - {:.2f}", pSuspension->mGameBreaker));
 
 		for (int i = 0; i < 4; i++) {
@@ -395,6 +409,27 @@ void AssistLoop() {
 	}
 }
 
+std::vector<Attrib::Collection*> FindCollectionAndAllChildren(const char* className, const char* name) {
+	std::vector<Attrib::Collection*> out;
+
+	auto parent = Attrib::FindCollection(Attrib::StringHash32(className), Attrib::StringHash32(name));
+	if (!parent) return out;
+	out.push_back(parent);
+
+	auto classId = Attrib::ClassTable::Find(&Attrib::Database::sThis->mPrivates->mClasses, Attrib::StringHash32(className));
+	auto pClass = Attrib::Database::sThis->mPrivates->mClasses.mTable[classId].mPtr;
+	auto collHash = pClass->GetFirstCollection();
+	while (collHash) {
+		auto childCollection = Attrib::FindCollection(Attrib::StringHash32(className), collHash);
+		if (childCollection->mParent == parent) {
+			out.push_back(childCollection);
+		}
+		collHash = pClass->GetNextCollection(collHash);
+	}
+
+	return out;
+}
+
 BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID) {
 	switch( fdwReason ) {
 		case DLL_PROCESS_ATTACH: {
@@ -405,6 +440,28 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD fdwReason, LPVOID) {
 
 			GetCurrentDirectoryW(MAX_PATH, gDLLDir);
 
+			NyaHooks::LateInitHook::Init();
+			NyaHooks::LateInitHook::aFunctions.push_back([](){
+				DLLDirSetter _setdir;
+
+				for (const auto& entry : std::filesystem::directory_iterator("CarDataDump")) {
+					if (entry.is_directory()) continue;
+
+					auto tuning = LoadCarTuningFromFile(entry.path().filename().string());
+					if (!tuning) {
+						WriteLog(std::format("Failed to load {}", entry.path().filename().string()));
+						continue;
+					}
+
+					auto collections = FindCollectionAndAllChildren("car_tuning", tuning->carName.c_str());
+					for (auto collection : collections) {
+						auto f = (float*)Attrib::Collection::GetData(collection, Attrib::StringHash32("TENSOR_SCALE"), 0);
+						f[0] = tuning->TENSOR_SCALE[0];
+						f[1] = tuning->TENSOR_SCALE[1];
+						f[2] = tuning->TENSOR_SCALE[2];
+					}
+				}
+			});
 			NyaHooks::WorldServiceHook::Init();
 			NyaHooks::WorldServiceHook::aPreFunctions.push_back(AssistLoop);
 

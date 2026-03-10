@@ -28,7 +28,7 @@ struct MWCarTuning {
 	TempTable AERO_CG;
 	TempTable AERO_COEFFICIENT;
 	float DRAG_COEFFICIENT;
-	float FRONT_AXLE;
+	//float FRONT_AXLE;
 	float FRONT_WEIGHT_BIAS;
 	float RENDER_MOTION;
 	AxlePair RIDE_HEIGHT;
@@ -41,9 +41,9 @@ struct MWCarTuning {
 	AxlePair SPRING_PROGRESSION;
 	AxlePair SPRING_STIFFNESS;
 	TempAxlePairTable SWAYBAR_STIFFNESS;
-	AxlePair TRACK_WIDTH;
+	//AxlePair TRACK_WIDTH;
 	AxlePair TRAVEL;
-	float WHEEL_BASE;
+	//float WHEEL_BASE;
 
 	// brakes
 	AxlePair BRAKE_LOCK;
@@ -53,7 +53,7 @@ struct MWCarTuning {
 	// tires
 	AxlePair DYNAMIC_GRIP;
 	AxlePair GRIP_SCALE;
-	AxlePair SECTION_WIDTH;
+	//AxlePair SECTION_WIDTH;
 	TempAxlePairTable STATIC_GRIP;
 	TempTable STEERING;
 	std::vector<float> YAW_CONTROL;
@@ -69,10 +69,19 @@ struct MWCarTuning {
 	//float SHIFT_SPEED;
 	//float TORQUE_CONVERTER;
 	float TORQUE_SPLIT;
+
+	// pvehicle
+	float TENSOR_SCALE[3];
 };
 std::vector<MWCarTuning> aCarTunings;
 MWCarTuning* LoadCarTuningFromFile(std::string configCarName) {
 	DLLDirSetter _setdir;
+
+	if (configCarName.ends_with(".conf")) {
+		for (int i = 0; i < 5; i++) {
+			configCarName.pop_back();
+		}
+	}
 
 	auto fileName = std::format("CarDataDump/{}.conf", configCarName);
 	if (!std::filesystem::exists(fileName)) return nullptr;
@@ -92,7 +101,7 @@ MWCarTuning* LoadCarTuningFromFile(std::string configCarName) {
 	tmp.AERO_CG = config["chassis"]["AERO_CG"].value_or(50.0);
 	tmp.AERO_COEFFICIENT = config["chassis"]["AERO_COEFFICIENT"].value_or(0.0);
 	tmp.DRAG_COEFFICIENT = config["chassis"]["DRAG_COEFFICIENT"].value_or(0.0);
-	tmp.FRONT_AXLE = config["chassis"]["FRONT_AXLE"].value_or(1.0);
+	//tmp.FRONT_AXLE = config["chassis"]["FRONT_AXLE"].value_or(1.0);
 	tmp.FRONT_WEIGHT_BIAS = config["chassis"]["FRONT_WEIGHT_BIAS"].value_or(50.0);
 	tmp.RENDER_MOTION = config["chassis"]["RENDER_MOTION"].value_or(1.0);
 	tmp.RIDE_HEIGHT.Front = config["chassis"]["RIDE_HEIGHT"][0].value_or(10.0);
@@ -113,19 +122,19 @@ MWCarTuning* LoadCarTuningFromFile(std::string configCarName) {
 	tmp.SPRING_STIFFNESS.Rear = config["chassis"]["SPRING_STIFFNESS"][1].value_or(0.0);
 	tmp.SWAYBAR_STIFFNESS.Front = config["chassis"]["SWAYBAR_STIFFNESS"][0].value_or(0.0);
 	tmp.SWAYBAR_STIFFNESS.Rear = config["chassis"]["SWAYBAR_STIFFNESS"][1].value_or(0.0);
-	tmp.TRACK_WIDTH.Front = config["chassis"]["TRACK_WIDTH"][0].value_or(1.0);
-	tmp.TRACK_WIDTH.Rear = config["chassis"]["TRACK_WIDTH"][1].value_or(1.0);
+	//tmp.TRACK_WIDTH.Front = config["chassis"]["TRACK_WIDTH"][0].value_or(1.0);
+	//tmp.TRACK_WIDTH.Rear = config["chassis"]["TRACK_WIDTH"][1].value_or(1.0);
 	tmp.TRAVEL.Front = config["chassis"]["TRAVEL"][0].value_or(5.0);
 	tmp.TRAVEL.Rear = config["chassis"]["TRAVEL"][1].value_or(5.0);
-	tmp.WHEEL_BASE = config["chassis"]["WHEEL_BASE"].value_or(2.0);
+	//tmp.WHEEL_BASE = config["chassis"]["WHEEL_BASE"].value_or(2.0);
 
 	// tires
 	tmp.DYNAMIC_GRIP.Front = config["tires"]["DYNAMIC_GRIP"][0].value_or(1.0);
 	tmp.DYNAMIC_GRIP.Rear = config["tires"]["DYNAMIC_GRIP"][1].value_or(1.0);
 	tmp.GRIP_SCALE.Front = config["tires"]["GRIP_SCALE"][0].value_or(1.0);
 	tmp.GRIP_SCALE.Rear = config["tires"]["GRIP_SCALE"][1].value_or(1.0);
-	tmp.SECTION_WIDTH.Front = config["tires"]["SECTION_WIDTH"][0].value_or(1.0);
-	tmp.SECTION_WIDTH.Rear = config["tires"]["SECTION_WIDTH"][1].value_or(1.0);
+	//tmp.SECTION_WIDTH.Front = config["tires"]["SECTION_WIDTH"][0].value_or(1.0);
+	//tmp.SECTION_WIDTH.Rear = config["tires"]["SECTION_WIDTH"][1].value_or(1.0);
 	tmp.STATIC_GRIP.Front = config["tires"]["STATIC_GRIP"][0].value_or(2.0);
 	tmp.STATIC_GRIP.Rear = config["tires"]["STATIC_GRIP"][1].value_or(2.0);
 	tmp.STEERING = config["tires"]["STEERING"].value_or(1.0);
@@ -141,6 +150,16 @@ MWCarTuning* LoadCarTuningFromFile(std::string configCarName) {
 	tmp.DIFFERENTIAL[1] = config["transmission"]["DIFFERENTIAL"][1].value_or(1.0);
 	tmp.DIFFERENTIAL[2] = config["transmission"]["DIFFERENTIAL"][2].value_or(1.0);
 	tmp.TORQUE_SPLIT = config["transmission"]["TORQUE_SPLIT"].value_or(0.5);
+
+	// pvehicle
+	tmp.TENSOR_SCALE[0] = config["pvehicle"]["TENSOR_SCALE"][0].value_or(-0.011f);
+	tmp.TENSOR_SCALE[1] = config["pvehicle"]["TENSOR_SCALE"][1].value_or(3.5);
+	tmp.TENSOR_SCALE[2] = config["pvehicle"]["TENSOR_SCALE"][2].value_or(1.0);
+	if (tmp.TENSOR_SCALE[0] == -0.011f) {
+		tmp.TENSOR_SCALE[0] = 1.0;
+		WriteLog(std::format("TENSOR_SCALE missing for {}", configCarName));
+	}
+
 	aCarTunings.push_back(tmp);
 	return &aCarTunings[aCarTunings.size()-1];
 }
@@ -152,11 +171,7 @@ MWCarTuning* GetCarTuning(const char* model) {
 	if (auto tuning = LoadCarTuningFromFile(model)) {
 		return tuning;
 	}
-	static bool bOnce = true;
-	if (bOnce) {
-		WriteLog(std::format("Failed to find tunings for {}", model));
-		bOnce = false;
-	}
+	WriteLog(std::format("Failed to find tunings for {}", model));
 	return &aCarTunings[0];
 }
 
@@ -203,7 +218,7 @@ void InitMWCarTunings() {
 		tmp.AERO_CG = 50.0;
 		tmp.AERO_COEFFICIENT = 0.14;
 		tmp.DRAG_COEFFICIENT = 0.22;
-		tmp.FRONT_AXLE = 1.13;
+		//tmp.FRONT_AXLE = 1.13;
 		tmp.FRONT_WEIGHT_BIAS = 53;
 		tmp.RENDER_MOTION = 1.0;
 		tmp.RIDE_HEIGHT = {8, 8};
@@ -216,9 +231,9 @@ void InitMWCarTunings() {
 		tmp.SPRING_PROGRESSION = {6.1, 6.1};
 		tmp.SPRING_STIFFNESS = {450, 400};
 		tmp.SWAYBAR_STIFFNESS = {200, 200};
-		tmp.TRACK_WIDTH = {1.465, 1.522};
+		//tmp.TRACK_WIDTH = {1.465, 1.522};
 		tmp.TRAVEL = {6.5, 6.5};
-		tmp.WHEEL_BASE = 2.35;
+		//tmp.WHEEL_BASE = 2.35;
 
 		// brakes
 		tmp.BRAKE_LOCK = {1.0, 2.75};
@@ -228,7 +243,7 @@ void InitMWCarTunings() {
 		// tires
 		tmp.DYNAMIC_GRIP = {1.4, 1.5};
 		tmp.GRIP_SCALE = {1.0, 1.0};
-		tmp.SECTION_WIDTH = {225, 225};
+		//tmp.SECTION_WIDTH = {225, 225};
 		tmp.STATIC_GRIP = {1.6, 1.7};
 		tmp.STEERING = 1.0;
 		tmp.YAW_CONTROL = {0.0, 0.1, 0.3, 1.0};
@@ -248,7 +263,7 @@ void InitMWCarTunings() {
 		tmp.AERO_CG = 47.0;
 		tmp.AERO_COEFFICIENT = 0.24;
 		tmp.DRAG_COEFFICIENT = 0.35;
-		tmp.FRONT_AXLE = 1.17;
+		//tmp.FRONT_AXLE = 1.17;
 		tmp.FRONT_WEIGHT_BIAS = 53.25;
 		tmp.RENDER_MOTION = 0.5;
 		tmp.RIDE_HEIGHT = {8, 8};
@@ -261,9 +276,9 @@ void InitMWCarTunings() {
 		tmp.SPRING_PROGRESSION = {7, 7};
 		tmp.SPRING_STIFFNESS = {450, 400};
 		tmp.SWAYBAR_STIFFNESS = {500, 500};
-		tmp.TRACK_WIDTH = {1.539, 1.538};
+		//tmp.TRACK_WIDTH = {1.539, 1.538};
 		tmp.TRAVEL = {6.5, 6.5};
-		tmp.WHEEL_BASE = 2.578;
+		//tmp.WHEEL_BASE = 2.578;
 
 		// brakes
 		tmp.BRAKE_LOCK = {1.0, 3.5};
@@ -273,7 +288,7 @@ void InitMWCarTunings() {
 		// tires
 		tmp.DYNAMIC_GRIP = {1.85, 1.9};
 		tmp.GRIP_SCALE = {1.05, 1.1};
-		tmp.SECTION_WIDTH = {235, 235};
+		//tmp.SECTION_WIDTH = {235, 235};
 		tmp.STATIC_GRIP = {2.1, 2.1};
 		tmp.STEERING = 1.0;
 		tmp.YAW_CONTROL = {0.1, 0.6, 0.8, 1.25};

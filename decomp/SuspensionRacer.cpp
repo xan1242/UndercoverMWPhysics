@@ -26,10 +26,6 @@ Table EightDegree = Table(EightDegreeTable, 6, 0.0f, 10.0f);
 Table TenDegree = Table(TenDegreeTable, 6, 0.0f, 10.0f);
 Table TwelveDegree = Table(TwelveDegreeTable, 6, 0.0f, 10.0f);
 
-#ifdef TARGET_WIN32
-// DRM protected variable
-int *pLatForceMultipliers = NULL;
-#endif
 Table *LoadSensitivityTable[] = {&ZeroDegree, &TwoDegree, &FourDegree, &SixDegree, &EightDegree, &TenDegree, &TwelveDegree};
 static const float NewCorneringScale = 1000.0f;
 static const float LoadFactor = 0.8f;
@@ -426,10 +422,10 @@ void SuspensionRacer::CreateTires() {
 	UMath::Vector3 dimension;
 	GetOwner()->GetRigidBody()->GetDimension(&dimension);
 
-	float wheelbase = GetMWCarData(this)->WHEEL_BASE;
-	float axle_width_f = GetMWCarData(this)->TRACK_WIDTH.At(0) - GetMWCarData(this)->SECTION_WIDTH.At(0) * 0.001f;
-	float axle_width_r = GetMWCarData(this)->TRACK_WIDTH.At(1) - GetMWCarData(this)->SECTION_WIDTH.At(1) * 0.001f;
-	float front_axle = GetMWCarData(this)->FRONT_AXLE;
+	float wheelbase = mCarInfo.GetLayout()->WHEEL_BASE;
+	float axle_width_f = mCarInfo.GetLayout()->TRACK_WIDTH.At(0) - mCarInfo.GetLayout()->SECTION_WIDTH.At(0) * 0.001f;
+	float axle_width_r = mCarInfo.GetLayout()->TRACK_WIDTH.At(1) - mCarInfo.GetLayout()->SECTION_WIDTH.At(1) * 0.001f;
+	float front_axle = mCarInfo.GetLayout()->FRONT_AXLE;
 
 	UMath::Vector3 fl{-axle_width_f * 0.5f, -dimension.y, front_axle};
 	UMath::Vector3 fr{axle_width_f * 0.5f, -dimension.y, front_axle};
@@ -671,8 +667,8 @@ float SuspensionRacer::ComputeTractionScale(const State &state) const {
 }
 
 void SuspensionRacer::SetCOG(float extra_bias, float extra_ride) {
-	float front_z = GetMWCarData(this)->FRONT_AXLE;
-	float rear_z = front_z - GetMWCarData(this)->WHEEL_BASE;
+	float front_z = mCarInfo.GetLayout()->FRONT_AXLE;
+	float rear_z = front_z - mCarInfo.GetLayout()->WHEEL_BASE;
 	IRigidBody *irb = GetOwner()->GetRigidBody();
 
 	UMath::Vector3 dim;
@@ -942,8 +938,8 @@ void SuspensionRacer::DoWallSteer(State &state) {
 // Credits: Brawltendo
 void SuspensionRacer::ComputeAckerman(const float steering, const State &state, UMath::Vector4 *left, UMath::Vector4 *right) const {
 	int going_right = true;
-	float wheelbase = GetMWCarData(this)->WHEEL_BASE;
-	float wheeltrack = GetMWCarData(this)->TRACK_WIDTH.Front;
+	float wheelbase = mCarInfo.GetLayout()->WHEEL_BASE;
+	float wheeltrack = mCarInfo.GetLayout()->TRACK_WIDTH.Front;
 	float steer_inside = ANGLE2RAD(steering);
 
 	// clamp steering angle <= 180 degrees
@@ -1916,7 +1912,7 @@ float SuspensionRacer::CalculateOversteerFactor() {
 	FUNCTION_LOG("SuspensionRacer::CalculateOversteerFactor");
 	float speed = GetOwner()->GetRigidBody()->GetSpeed();
 	float magnitude = 0.0f;
-	if ((this->GetVehicle()->GetSpeed() > 0.0f) && (speed > 1.0f)) {
+	if ((GetVehicle()->GetSpeed() > 0.0f) && (speed > 1.0f)) {
 		magnitude = UMath::Abs((GetIChassis()->GetWheelSkid(3) + GetIChassis()->GetWheelSkid(2)) * 0.5f) / speed;
 	}
 	return UMath::Min(magnitude, 1.0f);

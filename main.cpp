@@ -85,10 +85,7 @@ namespace UMath {
 	float Sqrt(float a) { return std::sqrt(a); }
 	float Pow(float a, float b) { return std::pow(a, b); }
 	float Pow(int a, int b) { return std::pow(a, b); }
-	float Atan2a(float a, float b) { return std::atan2(a, b); }
-	//float Atan2a(float a1, float a2) {
-	//	return bATan(a2, a1) * 0.000015258789;
-	//}
+	float Atan2a(float a, float b) { return std::atan2(a, b) / (std::numbers::pi*2); }
 
 	inline void Cross(Vector3 a, Vector3 b, Vector3 &r) {
 		r.x = a.y * b.z - a.z * b.y;

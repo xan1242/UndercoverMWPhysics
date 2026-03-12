@@ -20,7 +20,7 @@ else ()
 endif ()
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -masm=intel -static")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof -masm=intel -static")
 
 add_compile_definitions(NYA_COMMON_NO_D3D SUSPENSIONRACER_ELISE_TEST)
 

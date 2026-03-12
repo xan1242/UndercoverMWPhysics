@@ -300,7 +300,7 @@ MWCarTuning* GetMWCarData(const SuspensionRacer* pThis);
 MWCarTuning* GetMWCarDataFromTire(const void* pThis);
 #else
 Attrib::Gen::car_tuning::_LayoutStruct* GetMWCarData(const SuspensionRacer* pThis);
-Attrib::Gen::car_tuning::_LayoutStruct* GetMWCarData(const SuspensionRacer::Tire* pThis);
+Attrib::Gen::car_tuning::_LayoutStruct* GetMWCarData(const void* pThis);
 #endif
 
 #ifdef _MSC_VER

@@ -1076,7 +1076,7 @@ float SuspensionRacer::DoHumanSteering(State &state) {
 		}
 	}
 
-	float max_steering;
+	//float max_steering;
 	float newsteer = steer_input * CalculateMaxSteering(state, steer_type) * steering_coeff;
 	newsteer = bClamp(newsteer, -45.0f, 45.0f);
 

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 project(NFSUCMWPhysics)
+SET(PROJECT_SUFFIX "_gcp")
 
 SET(CMAKE_SYSTEM_NAME Windows)
 SET(CMAKE_CXX_STANDARD 20)
@@ -20,7 +21,7 @@ else ()
 endif ()
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof -masm=intel -static")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof -Wl,--pdb=${PROJECT_NAME}${PROJECT_SUFFIX}.pdb -masm=intel -static")
 
 add_compile_definitions(NYA_COMMON_NO_D3D SUSPENSIONRACER_ELISE_TEST)
 
@@ -39,4 +40,4 @@ target_include_directories(NFSUCMWPhysics PUBLIC ../nya-common-nfsuc)
 target_include_directories(NFSUCMWPhysics PUBLIC ../CwoeeMenuLib)
 
 set_target_properties(NFSUCMWPhysics PROPERTIES PREFIX "")
-set_target_properties(NFSUCMWPhysics PROPERTIES SUFFIX "_gcp.asi")
+set_target_properties(NFSUCMWPhysics PROPERTIES SUFFIX "${PROJECT_SUFFIX}.asi")

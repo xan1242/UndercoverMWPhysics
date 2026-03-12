@@ -2,6 +2,12 @@
 #ifndef AVERAGEWINDOW_H
 #define AVERAGEWINDOW_H
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable: 4244) // conversion from 'const double' to 'T', possible loss of data
+#pragma warning(disable: 4305) // 'initializing': truncation from 'double' to '_Ty'
+#endif
+
 class AverageBase {
 public:
 	void *operator new(std::size_t size) {
@@ -230,5 +236,9 @@ private:
 template <> inline void tGraph<float>::Blend(float *dest, float *a, float *b, const float blend_a) {
 	*dest = *a * blend_a + *b * (1.0f - blend_a);
 }
+
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
 
 #endif //AVERAGEWINDOW_H

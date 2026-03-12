@@ -2,6 +2,12 @@
 #include "SuspensionRacer.h"
 #include "MWChassis.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable: 4244) // conversion from 'const double' to 'T', possible loss of data
+#pragma warning(disable: 4305) // 'initializing': truncation from 'double' to '_Ty'
+#endif
+
 
 namespace MWChassis {
 	SuspensionRacer* GetSuspensionRacer(uintptr_t ptr) {
@@ -608,3 +614,7 @@ void* NewChassisVTable[] = {
 		(void*)&MWChassis::GetTimeFromLanding,
 		(void*)&MWChassis::IsCounterSteering,
 };
+
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif

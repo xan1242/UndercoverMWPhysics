@@ -2,6 +2,12 @@
 #include "MWChassis.h"
 #include "../MWCarTuning.h"
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning(disable: 4244) // conversion from 'const double' to 'T', possible loss of data
+#pragma warning(disable: 4305) // 'initializing': truncation from 'double' to '_Ty'
+#endif
+
 auto cartuning_LookupKey = (uint32_t(__thiscall*)(Attrib::Gen::car_tuning*, const ISimable*, int))0x721E20;
 auto ctor_cartuning = (void(__thiscall*)(Attrib::Gen::car_tuning*, uint32_t))0x721CB0;
 
@@ -1927,7 +1933,10 @@ void SuspensionRacer::Reset() {
 	mDrift.Reset();
 }
 
-void* SuspensionRacer::operator new(size_t size)
-{
+void* SuspensionRacer::operator new(size_t size) {
 	return gFastMem.Alloc(size, nullptr);
 }
+
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
